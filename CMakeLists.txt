@@ -3,19 +3,19 @@ project(chess_cpp)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(chess_cpp main.cpp
-        board.cpp
-        board.hpp
-        Piece.hpp
-        Move.hpp
-        move.cpp
-        movegen.cpp
-        movegen.hpp
-        bitboards.cpp
-        bitboards.hpp
-        Square.hpp
-        utils.hpp
-        tests.hpp
+add_executable(chess_cpp src/main.cpp
+        src/Board.cpp
+        src/Board.hpp
+        src/Piece.hpp
+        src/Move.hpp
+        src/Move.cpp
+        src/movegen.cpp
+        src/movegen.hpp
+        src/bitboards.cpp
+        src/bitboards.hpp
+        src/Square.hpp
+        src/utils.hpp
+        src/tests.hpp
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
