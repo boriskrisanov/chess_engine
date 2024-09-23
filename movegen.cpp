@@ -1,0 +1,628 @@
+#include "movegen.hpp"
+
+#include <bit>
+
+#include "bitboards.hpp"
+
+using std::vector, std::array;
+
+struct EdgeDistance
+{
+    uint8_t left;
+    uint8_t right;
+    uint8_t top;
+    uint8_t bottom;
+    uint8_t topLeft;
+    uint8_t topRight;
+    uint8_t bottomLeft;
+    uint8_t bottomRight;
+};
+
+enum class Direction : int8_t
+{
+    UP = -8,
+    DOWN = 8,
+    LEFT = -1,
+    RIGHT = 1,
+    UP_LEFT = UP + LEFT,
+    UP_RIGHT = UP + RIGHT,
+    DOWN_LEFT = DOWN + LEFT,
+    DOWN_RIGHT = DOWN + RIGHT
+};
+
+constexpr array<EdgeDistance, 64> edgeDistances = []() consteval
+{
+    array<EdgeDistance, 64> distances{};
+
+    for (int i = 0; i < 64; i++)
+    {
+        const Square rank = i / 8 + 1;
+        auto& [left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight] = distances[i];
+
+        left = 8 - (rank * 8 - i);
+        right = rank * 8 - i - 1;
+        top = i / 8;
+        bottom = (63 - i) / 8;
+        topLeft = std::min(top, left);
+        topRight = std::min(top, right);
+        bottomLeft = std::min(bottom, left);
+        bottomRight = std::min(bottom, right);
+    }
+
+    return distances;
+}();
+
+constexpr uint8_t edgeDistanceInDirection(Square square, Direction direction)
+{
+    switch (direction)
+    {
+    case Direction::UP:
+        return edgeDistances[square].top;
+    case Direction::DOWN:
+        return edgeDistances[square].bottom;
+    case Direction::LEFT:
+        return edgeDistances[square].left;
+    case Direction::RIGHT:
+        return edgeDistances[square].right;
+    case Direction::UP_LEFT:
+        return edgeDistances[square].topLeft;
+    case Direction::UP_RIGHT:
+        return edgeDistances[square].topRight;
+    case Direction::DOWN_LEFT:
+        return edgeDistances[square].bottomLeft;
+    case Direction::DOWN_RIGHT:
+        return edgeDistances[square].bottomRight;
+    }
+    // Impossible since the switch handles all cases. This is here just to get rid of the compiler warning.
+    return 0;
+}
+
+constexpr Bitboard rayAttackingSquares(Bitboard blockers, Square position, array<Direction, 4> directions)
+{
+    Bitboard attackingSquares = 0;
+
+    for (Direction direction : directions)
+    {
+        for (int i = 0; i < edgeDistanceInDirection(position, direction); i++)
+        {
+            int targetSquare = position + static_cast<int8_t>(direction) * (i + 1);
+            attackingSquares |= bitboards::withSquare(targetSquare);
+
+            if ((blockers & bitboards::withSquare(targetSquare)) != 0)
+            {
+                break;
+            }
+        }
+    }
+
+    return attackingSquares;
+}
+
+constexpr vector<Bitboard> possibleBlockerPositions(Bitboard blockerMask)
+{
+    vector<Bitboard> configurations{};
+    vector<uint8_t> indexes{};
+    for (int i = 0; i < 64; i++)
+    {
+        if ((1ULL << i & blockerMask) != 0)
+        {
+            indexes.push_back(63 - i);
+        }
+    }
+
+    // 2^k possible blocker configurations
+    const int n = 1 << std::popcount(blockerMask);
+    for (int configuration = 0; configuration < n; configuration++)
+    {
+        int j = 0;
+        Bitboard finalConfig = 0;
+        for (int i = 0; i < std::popcount(blockerMask); i++)
+        {
+            if (((configuration >> i) & 1) != 0)
+            {
+                finalConfig |= static_cast<Bitboard>(1) << (63 - indexes.at(j));
+            }
+            j++;
+        }
+        configurations.push_back(finalConfig);
+    }
+
+    return configurations;
+}
+
+constexpr array<uint64_t, 64> ROOK_MAGICS{
+    0xb7c8ffffbdf8ed79, 0x7cccb4acac99a09a, 0x277f8a1f457fa352, 0x7e7d01513baf5767, 0xea6fff8a18fecce7,
+    0x5d24e354a272711, 0xcb734ff54bfdceab, 0xc796020f8482c023, 0xcd8c8f85cd8c7798, 0xeaa063aac121fd78,
+    0xdc1e46605b34c09c, 0xcbacc491fc4f54bc, 0x8036e0e6d8f8d7b8, 0xd3b647d77960e7d8, 0x9b20d4fa1bc46876,
+    0x44c4264f0b18de1e, 0x8855b001ac251d80, 0x9625d5292d2e3c8e, 0xdbda6f4a66e590a7, 0x829058c99069906d,
+    0xc9c0b0ea9c5521fb, 0x4177cd4386a64fab, 0x324a8dbe2ff95405, 0x55cd15e172a8d76f, 0xfb64a8f2415d7821,
+    0xe7e48fdaafbff944, 0xbbb74318d41d9980, 0x11ab8facd32cad62, 0x10fcc8bc23373750, 0x528b8b07f650b407,
+    0xe2ec3ddbe240271, 0x658d05b962e98275, 0xf70541a9e66a28a3, 0x79336c523e22a894, 0xe0543017e7f2ea61,
+    0x626d5cde515429f3, 0xda285c3eb049a381, 0xb33e026abed080c8, 0x4fd05955da71f2bd, 0x6f5e84d217ad0bd7,
+    0x96cd81400f2a7f68, 0x815be01fdbcb6d01, 0x66d6a657bfde74ac, 0xed07915ff915e160, 0x4267b33c3ccf4512,
+    0xb945f45e60bc88c0, 0x6f25882bfdacac61, 0xc16006db41b8fc7e, 0x327dfffdbe7ae3aa, 0x7cf6fa0a0d05f415,
+    0xc480c82b51c4a8df, 0xf43028053a4e4b4, 0x5475cff715cffbd0, 0xdea9695deb61b438, 0xac8aea22a7dbf996,
+    0x73aecf15f4cd6390, 0xd6f50be59bf640b1, 0xa587df828f4368ab, 0x3581646cb6083d6b, 0xe4ded3bf94deb829,
+    0x1878781a0a5f7d3a, 0x7a1ca6b38e4a76a1, 0x3322c373d920ddc6, 0x62ca191005858111
+};
+constexpr array<uint8_t, 64> ROOK_SHIFTS{
+    50, 50, 50, 50, 51, 50, 50, 49, 51, 52, 51, 51, 51, 52, 52, 51, 51, 52, 52, 52, 51, 51, 52, 50, 51, 52, 51, 51, 52,
+    51, 52, 50, 51, 52, 52, 51, 51, 51, 52, 51, 51, 52, 51, 52, 51, 51, 52, 51, 51, 52, 51, 51, 52, 52, 52, 50, 49, 50,
+    50, 50, 50, 50, 50, 49
+};
+
+constexpr array<uint64_t, 64> BISHOP_MAGICS = {
+    0xb8d001f098f81e00, 0x608526004064090, 0x584f1948600c9c91, 0xe2333ab7e2602083, 0xbb8eb4dc10882089,
+    0x9aa25ead2c633000, 0x6e1bbba2880e8d21, 0xe361039861b637db, 0x464ecb40f41fe041, 0xe0c0f80f83c7830c,
+    0x27e4caa0650d407f, 0x421b379212440abe, 0x23bcf95910410bce, 0xca7e6ba3a5100445, 0x869e968d7420139d,
+    0xee4020cc9082543, 0x9b790e4c8a02b092, 0xd1eb1b0b0709a40b, 0x399de3efefb62600, 0x98ee6e703b6d575,
+    0xe96c65008088e041, 0x399928d647fdeffb, 0xfe5924841912a45c, 0xfe14f07af8e50e04, 0x50349f0231d66c00,
+    0xcf50a44c8eccf800, 0x320f04daf0528793, 0x16f2bedbffd3bddc, 0xb0987fefca7fbfd2, 0x5e244b495bad4658,
+    0xcbfe038e2de72e2a, 0x1a1887c884c4e03b, 0xaf91c17679c0e63f, 0x37aa2398eb380684, 0x459c2357a2543de8,
+    0x538185e1d430c2fa, 0x935571681f6fdbf7, 0xc25f97052e844918, 0x51a3a00c9757160b, 0x1f84963ba6f603c4,
+    0x7fcb81d3861900f, 0x3e9c82fc08908805, 0x39938dcad7a938e1, 0xd0692149024012d8, 0x81e0cf3e5f758447,
+    0xf763b7f04f3b4f05, 0xe96010e61600ce68, 0x28d424ea68102500, 0x3632c7bfbbff7760, 0x18ef575d72945d9d,
+    0x15994bdf7befd422, 0xfcef1e05ee55acd1, 0xd7a4e6066ac05c8e, 0x81589a1a23410129, 0x8640b904cc7c8083,
+    0xe774703dd07f8f7a, 0x6b02be82acde54f5, 0xbdf88210810427d1, 0x7de5c389dc68f251, 0xb1d8820280d514d7,
+    0xf348042a41ee4af1, 0x19c01e38b70e474, 0x47632631826a015f, 0xe226625000cede4c
+};
+constexpr array<uint8_t, 64> BISHOP_SHIFTS = {
+    57, 58, 58, 58, 58, 58, 58, 56, 58, 58, 58, 58, 58, 58, 58, 58, 58, 58, 55, 55, 56, 55, 58, 58, 58, 58, 55, 52, 53,
+    55, 58, 58, 58, 58, 55, 53, 53, 55, 58, 58, 58, 58, 55, 56, 55, 55, 58, 58, 58, 58, 58, 58, 58, 58, 58, 58, 56, 58,
+    58, 58, 58, 58, 58, 56
+};
+
+
+constexpr array<Bitboard, 64> ROOK_BLOCKER_MASKS = []() consteval
+{
+    array<Bitboard, 64> masks{};
+    for (int rookIndex = 0; rookIndex < 64; rookIndex++)
+    {
+        for (int i = 0; i < 64; i++)
+        {
+            if (i != rookIndex && (square::rank(i) == square::rank(rookIndex) || square::file(i) ==
+                square::file(rookIndex)))
+            {
+                // Don't add the square if it's on the edge
+                if ((square::file(i) == 1 && square::file(rookIndex) != 1) || (square::file(i) == 8 &&
+                    square::file(rookIndex) != 8))
+                {
+                    continue;
+                }
+                if ((square::rank(i) == 1 && square::rank(rookIndex) != 1) || (square::rank(i) == 8 &&
+                    square::rank(rookIndex) != 8))
+                {
+                    continue;
+                }
+
+                masks[rookIndex] |= bitboards::withSquare(i);
+            }
+        }
+    }
+    return masks;
+}();
+
+constexpr array<Bitboard, 64> BISHOP_BLOCKER_MASKS = []() consteval
+{
+    array<Bitboard, 64> masks{};
+    for (int bishopIndex = 0; bishopIndex < 64; bishopIndex++)
+    {
+        const array directions{Direction::UP_LEFT, Direction::UP_RIGHT, Direction::DOWN_LEFT, Direction::DOWN_RIGHT};
+        for (Direction direction : directions)
+        {
+            for (int i = 0; i < edgeDistanceInDirection(bishopIndex, direction); i++)
+            {
+                Square targetSquare = bishopIndex + static_cast<uint8_t>(direction) * (i + 1);
+                const bool isEdgeSquare = square::rank(targetSquare) == 1 || square::rank(targetSquare) == 8 ||
+                    square::file(targetSquare) == 1 || square::file(targetSquare) == 8;
+                if (!isEdgeSquare)
+                {
+                    masks[bishopIndex] |= bitboards::withSquare(targetSquare);
+                }
+            }
+        }
+    }
+    return masks;
+}();
+
+
+// TODO: Use consteval for magic bitboard functions that can run at compile time
+constexpr array<vector<Bitboard>, 64> computeRookAttackingSquares()
+{
+    array<vector<Bitboard>, 64> attackingSquares{};
+
+    for (Square i = 0; i < 64; i++)
+    {
+        uint64_t arrayLength = 0;
+        for (const Bitboard blockerMask : possibleBlockerPositions(ROOK_BLOCKER_MASKS[i]))
+        {
+            arrayLength = std::max(arrayLength, blockerMask * ROOK_MAGICS[i] >> ROOK_SHIFTS[i]);
+        }
+        // Add 1 because the array length will be one more than the maximum index
+        arrayLength++;
+
+        attackingSquares[i].resize(arrayLength);
+        for (Bitboard blockerPositions : possibleBlockerPositions(ROOK_BLOCKER_MASKS[i]))
+        {
+            const uint32_t index = blockerPositions * ROOK_MAGICS[i] >> ROOK_SHIFTS[i];
+            attackingSquares[i][index] = rayAttackingSquares(blockerPositions, i, array{
+                                                                 Direction::UP, Direction::DOWN, Direction::LEFT,
+                                                                 Direction::RIGHT
+                                                             });
+        }
+    }
+
+    return attackingSquares;
+}
+
+// TODO: Merge with rook attacking squares
+constexpr array<vector<Bitboard>, 64> computeBishopAttackingSquares()
+{
+    array<vector<Bitboard>, 64> attackingSquares{};
+
+    for (Square i = 0; i < 64; i++)
+    {
+        uint64_t arrayLength = 0;
+        for (const Bitboard blockerMask : possibleBlockerPositions(BISHOP_BLOCKER_MASKS[i]))
+        {
+            arrayLength = std::max(arrayLength, blockerMask * BISHOP_MAGICS[i] >> BISHOP_SHIFTS[i]);
+        }
+        // Add 1 because the array length will be one more than the maximum index
+        arrayLength++;
+
+        attackingSquares[i].resize(arrayLength);
+        for (Bitboard blockerPositions : possibleBlockerPositions(BISHOP_BLOCKER_MASKS[i]))
+        {
+            const uint32_t index = blockerPositions * BISHOP_MAGICS[i] >> BISHOP_SHIFTS[i];
+            attackingSquares[i][index] = rayAttackingSquares(blockerPositions, i, array{
+                                                                 Direction::UP_LEFT, Direction::UP_RIGHT,
+                                                                 Direction::DOWN_LEFT,
+                                                                 Direction::DOWN_RIGHT
+                                                             });
+        }
+    }
+
+    return attackingSquares;
+}
+
+// TODO: Use array instead of vector (array of pointers to arrays of different lengths)
+const array<vector<Bitboard>, 64> ROOK_ATTACKING_SQUARES = computeRookAttackingSquares();
+const array<vector<Bitboard>, 64> BISHOP_ATTACKING_SQUARES = computeBishopAttackingSquares();
+
+Bitboard generateAttackingSquares(Piece piece, Square position, const Board& board)
+{
+    // TODO: Use diagonal edge distances
+    Bitboard squares = 0;
+    const EdgeDistance edgeDistance = edgeDistances[position];
+
+    switch (piece.kind)
+    {
+    case PieceKind::PAWN:
+        if (piece.color == WHITE)
+        {
+            if (edgeDistance.top > 0 && edgeDistance.right > 0)
+            {
+                squares |= bitboards::withSquare(position - 8 + 1);
+            }
+            if (edgeDistance.top > 0 && edgeDistance.left > 0)
+            {
+                squares |= bitboards::withSquare(position - 8 - 1);
+            }
+        }
+        else
+        {
+            if (edgeDistance.bottom > 0 && edgeDistance.right > 0)
+            {
+                squares |= bitboards::withSquare(position + 8 + 1);
+            }
+            if (edgeDistance.bottom > 0 && edgeDistance.left > 0)
+            {
+                squares |= bitboards::withSquare(position + 8 - 1);
+            }
+        }
+        break;
+    case PieceKind::KNIGHT:
+        if (edgeDistance.left >= 2 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(position - 8 - 2);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.top >= 2)
+        {
+            squares |= bitboards::withSquare(position - 8 * 2 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.top >= 2)
+        {
+            squares |= bitboards::withSquare(position - 8 * 2 + 1);
+        }
+        if (edgeDistance.left >= 2 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(position - 2 + 8);
+        }
+        if (edgeDistance.right >= 2 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(position + 2 + 8);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.bottom >= 2)
+        {
+            squares |= bitboards::withSquare(position + 8 * 2 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.bottom >= 2)
+        {
+            squares |= bitboards::withSquare(position + 8 * 2 + 1);
+        }
+        if (edgeDistance.right >= 2 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(position - 8 + 2);
+        }
+        break;
+    case PieceKind::BISHOP:
+        {
+            const Bitboard blockers = board.getPieces() & BISHOP_BLOCKER_MASKS[position];
+            squares = BISHOP_ATTACKING_SQUARES[position][blockers * BISHOP_MAGICS[position] >> BISHOP_SHIFTS[position]];
+        }
+        break;
+    case PieceKind::ROOK:
+        {
+            const Bitboard blockers = board.getPieces() & ROOK_BLOCKER_MASKS[position];
+            squares = ROOK_ATTACKING_SQUARES[position][blockers * ROOK_MAGICS[position] >> ROOK_SHIFTS[position]];
+        }
+        break;
+    case PieceKind::QUEEN:
+        {
+            const Bitboard horizontalBlockers = board.getPieces() & ROOK_BLOCKER_MASKS[position];
+            const Bitboard diagonalBlockers = board.getPieces() & BISHOP_BLOCKER_MASKS[position];
+            const Bitboard horizontalSquares = ROOK_ATTACKING_SQUARES[position][(horizontalBlockers * ROOK_MAGICS[
+                position]) >> ROOK_SHIFTS[position]];
+            const Bitboard diagonalSquares = BISHOP_ATTACKING_SQUARES[position][(diagonalBlockers * BISHOP_MAGICS[
+                position]) >> BISHOP_SHIFTS[position]];
+            squares = horizontalSquares | diagonalSquares;
+        }
+        break;
+    case PieceKind::KING:
+        if (edgeDistance.left >= 1)
+        {
+            squares |= bitboards::withSquare(position - 1);
+        }
+        if (edgeDistance.right >= 1)
+        {
+            squares |= bitboards::withSquare(position + 1);
+        }
+        if (edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(position - 8);
+        }
+        if (edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(position + 8);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(position - 8 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(position - 8 + 1);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(position + 8 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(position + 8 + 1);
+        }
+        break;
+    default:
+        break;
+    }
+
+    return squares;
+}
+
+void generatePseudoLegalMoves(Piece piece, Square position, const Board& board, std::vector<Move>& moves)
+{
+    if (piece.kind == PieceKind::PAWN)
+    {
+        int8_t enPassantTargetSquare = board.getEnPassantTargetSquare();
+        Bitboard attackingSquares = generateAttackingSquares(piece, position, board);
+
+        // Ignore squares that are occupied by friendly pieces
+        attackingSquares &= ~board.getPieces(piece.color);
+
+        // Captures
+        for (Square targetSquare : bitboards::squaresOf(attackingSquares))
+        {
+            Piece capturedPiece = board[targetSquare];
+            if (capturedPiece.isNone() || capturedPiece.color == piece.color)
+            {
+                continue;
+            }
+
+            Move move{position, targetSquare, MoveFlag::None};
+
+            // Capture with promotion
+            if ((piece.color == WHITE && square::rank(targetSquare) == 8) || (piece.color == BLACK &&
+                square::rank(targetSquare) == 1))
+            {
+                moves.emplace_back(position, targetSquare, MoveFlag::PromotionKnight);
+                moves.emplace_back(position, targetSquare, MoveFlag::PromotionBishop);
+                moves.emplace_back(position, targetSquare, MoveFlag::PromotionRook);
+                moves.emplace_back(position, targetSquare, MoveFlag::PromotionQueen);
+            }
+            else
+            {
+                moves.push_back(move);
+            }
+        }
+
+        // En passant
+        if (enPassantTargetSquare != -1)
+        {
+            if (piece.color == WHITE)
+            {
+                if (enPassantTargetSquare == position - 8 - 1 && edgeDistances[position].left > 0 && edgeDistances[
+                    position].top > 0)
+                {
+                    moves.emplace_back(position, enPassantTargetSquare, MoveFlag::EnPassant);
+                }
+                else if (enPassantTargetSquare == position - 8 + 1 && edgeDistances[position].right > 0 && edgeDistances
+                    [position].top > 0)
+                {
+                    moves.emplace_back(position, enPassantTargetSquare, MoveFlag::EnPassant);
+                }
+            }
+            else
+            {
+                if (enPassantTargetSquare == position + 8 - 1 && edgeDistances[position].left > 0 && edgeDistances[
+                    position].bottom > 0)
+                {
+                    moves.emplace_back(position, enPassantTargetSquare, MoveFlag::EnPassant);
+                }
+                else if (enPassantTargetSquare == position + 8 + 1 && edgeDistances[position].right > 0 && edgeDistances
+                    [position].bottom > 0)
+                {
+                    moves.emplace_back(position, enPassantTargetSquare, MoveFlag::EnPassant);
+                }
+            }
+        }
+
+        // Normal moves
+        if (piece.color == WHITE)
+        {
+            if (board.isSquareEmpty(position - 8))
+            {
+                if (square::rank(position - 8) == 8)
+                {
+                    // Promotion
+                   moves.emplace_back(position, position - 8, MoveFlag::PromotionKnight);
+                   moves.emplace_back(position, position - 8, MoveFlag::PromotionBishop);
+                   moves.emplace_back(position, position - 8, MoveFlag::PromotionRook);
+                   moves.emplace_back(position, position - 8, MoveFlag::PromotionQueen);
+                }
+                else
+                {
+                    // Normal move
+                    moves.emplace_back(position, position - 8, MoveFlag::None);
+                }
+
+                if (square::rank(position) == 2 && board.isSquareEmpty(position - 8 * 2))
+                {
+                    // Move two squares forward on first move
+                    moves.emplace_back(position, position - 8 * 2, MoveFlag::None);
+                }
+            }
+        }
+        else
+        {
+            if (board.isSquareEmpty(position + 8))
+            {
+                if (square::rank(position + 8) == 1)
+                {
+                    // Promotion
+                    moves.emplace_back(position, position + 8, MoveFlag::PromotionKnight);
+                    moves.emplace_back(position, position + 8, MoveFlag::PromotionBishop);
+                    moves.emplace_back(position, position + 8, MoveFlag::PromotionRook);
+                    moves.emplace_back(position, position + 8, MoveFlag::PromotionQueen);
+                }
+                else
+                {
+                    // Normal move
+                    moves.emplace_back(position, position + 8, MoveFlag::None);
+                }
+
+                if (square::rank(position) == 7 && board[position + 8 * 2].kind == PieceKind::NONE)
+                {
+                    // Move two squares forward on first move
+                    moves.emplace_back(position, position + 8 * 2, MoveFlag::None);
+                }
+            }
+        }
+    }
+    else if (piece.kind == PieceKind::KING)
+    {
+        Bitboard attackingSquares = generateAttackingSquares(piece, position, board);
+        const Bitboard opponentAttackingSquares = board.getAttackingSquares(oppositeColor(piece.color));
+        // Ignore squares occupied by friendly pieces and squares attacked by enemy pieces
+        attackingSquares &= ~(opponentAttackingSquares | board.getPieces(piece.color));
+
+        for (Square targetSquare : bitboards::squaresOf(attackingSquares))
+        {
+            moves.emplace_back(position, targetSquare, MoveFlag::None);
+        }
+
+        // Castling
+        if (!board.isSideInCheck(piece.color))
+        {
+            if (piece.color == WHITE)
+            {
+                if (board.canWhiteShortCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(position + 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(position + 2)) == 0
+                    && board.isSquareEmpty(position + 1)
+                    && board.isSquareEmpty(position + 2)
+                )
+                {
+                    moves.emplace_back(position, position + 2, MoveFlag::ShortCastling);
+                }
+                if (board.canWhiteLongCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(position - 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(position - 2)) == 0
+                    && board.isSquareEmpty(position - 1)
+                    && board.isSquareEmpty(position - 2)
+                    && board.isSquareEmpty(position - 3)
+                )
+                {
+                    moves.emplace_back(position, position - 2, MoveFlag::LongCastling);
+                }
+            }
+            else
+            {
+                if (board.canBlackShortCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(position + 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(position + 2)) == 0
+                    && board.isSquareEmpty(position + 1)
+                    && board.isSquareEmpty(position + 2)
+                )
+                {
+                    moves.emplace_back(position, position + 2, MoveFlag::ShortCastling);
+                }
+                if (board.canBlackLongCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(position - 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(position - 2)) == 0
+                    && board.isSquareEmpty(position - 1)
+                    && board.isSquareEmpty(position - 2)
+                    && board.isSquareEmpty(position - 3)
+                )
+                {
+                    moves.emplace_back(position, position - 2, MoveFlag::LongCastling);
+                }
+            }
+        }
+    }
+    else
+    {
+        Bitboard attackingSquares = generateAttackingSquares(piece, position, board);
+        // Ignore squares that are occupied by friendly pieces
+        attackingSquares &= ~board.getPieces(piece.color);
+
+        for (Square attackingSquare : bitboards::squaresOf(attackingSquares))
+        {
+            Move move{position, attackingSquare, MoveFlag::None};
+            moves.push_back(move);
+        }
+    }
+}
+
+void generateLegalMoves(Piece piece, Square position, Board& board, std::vector<Move>& moves)
+{
+    std::vector<Move> pseudoLegalMoves;
+    generatePseudoLegalMoves(piece, position, board, pseudoLegalMoves);
+
+    for (Move move : pseudoLegalMoves)
+    {
+        if (board.isPseudoLegalMoveLegal(move))
+        {
+            moves.push_back(move);
+        }
+    }
+}
