@@ -30,6 +30,7 @@ struct Piece
 {
     PieceKind kind = PieceKind::NONE;
     PieceColor color = PieceColor::WHITE;
+    bool isSlidingPiece = false;
 
     bool isNone() const
     {
@@ -39,7 +40,7 @@ struct Piece
     Piece() = default;
 
     Piece(PieceKind kind, PieceColor color)
-        : kind(kind), color(color)
+        : kind(kind), color(color), isSlidingPiece(kind == PieceKind::ROOK || kind == PieceKind::BISHOP || kind == PieceKind::QUEEN)
     {
 
     }
@@ -70,6 +71,8 @@ struct Piece
         default:
             kind = PieceKind::NONE;
         }
+
+        isSlidingPiece = kind == PieceKind::ROOK || kind == PieceKind::BISHOP || kind == PieceKind::QUEEN;
     }
 
     std::string toString() const

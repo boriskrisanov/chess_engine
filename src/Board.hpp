@@ -40,6 +40,11 @@ public:
     bool isPseudoLegalMoveLegal(Move move);
     std::string toString() const;
     std::string uciMoveHistory() const;
+    Bitboard getSlidingPieces(PieceColor side) const;
+
+    PieceColor sideToMove = WHITE;
+    Square whiteKingPosition = 0;
+    Square blackKingPosition = 0;
 
     operator std::string() const
     {
@@ -131,8 +136,6 @@ private:
     Bitboard blackKing = 0;
 
     std::array<Piece, 64> board{};
-
-    PieceColor sideToMove = WHITE;
 
     Bitboard whiteAttackingSquares = 0;
     Bitboard blackAttackingSquares = 0;

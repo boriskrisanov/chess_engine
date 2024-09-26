@@ -52,6 +52,14 @@ void Board::loadFen(string fen)
         else
         {
             board[i] = Piece{c};
+            if (c == 'K')
+            {
+                whiteKingPosition = i;
+            }
+            else if (c == 'k')
+            {
+                blackKingPosition = i;
+            }
             addPiece(board[i], i);
         }
         i++;
@@ -149,11 +157,17 @@ void Board::makeMove(Move move)
         capturedPiece = board[sideToMove == WHITE ? move.end() + 8 : move.end() - 8];
     }
 
-    // if (board[square::fromString("h7")].isNone() && board[
-    //     square::fromString("h6")].isNone() && board[square::fromString("h5")].isNone())
-    // {
-    //     std::cout << "c make start" << "\n";
-    // }
+    if (movedPiece.kind == PieceKind::KING)
+    {
+        if (sideToMove == WHITE)
+        {
+            whiteKingPosition = move.end();
+        }
+        else
+        {
+            blackKingPosition = move.end();
+        }
+    }
 
     move.capturedPiece = capturedPiece;
     moveHistory.push_back(move);
@@ -420,10 +434,17 @@ void Board::unmakeMove()
                                  ? Piece{PieceKind::PAWN, oppositeColor(sideToMove)}
                                  : board[move.end()];
 
-    // if (movedPiece.kind == PieceKind::PAWN && (move.end() == move.start() - 8 - 1 || move.end() == move.start() - 8 + 1))
-    // {
-    //     std::cout << "a" << std::endl;
-    // }
+    if (movedPiece.kind == PieceKind::KING)
+    {
+        if (movedPiece.color == WHITE)
+        {
+            whiteKingPosition = move.start();
+        }
+        else
+        {
+            blackKingPosition = move.start();
+        }
+    }
 
     // Undo castling
     if (move.moveFlag() == MoveFlag::ShortCastling)
@@ -513,21 +534,7 @@ void Board::unmakeMove()
 
 std::vector<Move> Board::getLegalMoves()
 {
-    std::vector<Move> moves;
-    // Expected number of moves (on average)
-    // TODO: Dynamically change this during the game? (not sure how much impact this has on performance)
-    moves.reserve(30);
-
-    for (Square i = 0; i < 64; i++)
-    {
-        const Piece piece = board[i];
-        if (!piece.isNone() && piece.color == sideToMove)
-        {
-            generateLegalMoves(piece, i, *this, moves);
-        }
-    }
-
-    return moves;
+    return generateLegalMoves(*this);
 }
 
 void Board::getPseudoLegalMoves(std::vector<Move>& moves) const
@@ -600,6 +607,13 @@ std::string Board::uciMoveHistory() const
     s = s.erase(s.size() - 1, 1);
 
     return s;
+}
+
+Bitboard Board::getSlidingPieces(PieceColor side) const
+{
+    return side == WHITE
+               ? whiteBishops | whiteRooks | whiteQueens
+               : blackBishops | blackRooks | blackQueens;
 }
 
 void Board::updateAttackingSquares()

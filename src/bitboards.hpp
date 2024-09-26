@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <iostream>
 #include <vector>
 #include "Move.hpp"
 
@@ -15,4 +14,5 @@ namespace bitboards
     }
 
     std::vector<Square> squaresOf(Bitboard bitboard);
+    constexpr Bitboard ALL_SQUARES = std::numeric_limits<Bitboard>::max();
 }
