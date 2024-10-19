@@ -23,6 +23,7 @@ public:
     Square start() const;
     Square end() const;
     MoveFlag moveFlag() const;
+    int score = 0;
 
     Piece capturedPiece;
 

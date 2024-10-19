@@ -616,6 +616,12 @@ Bitboard Board::getSlidingPieces(PieceColor side) const
                : blackBishops | blackRooks | blackQueens;
 }
 
+bool Board::isDraw()
+{
+    // TODO
+    return false;
+}
+
 void Board::updateAttackingSquares()
 {
     whiteAttackingSquares = 0;

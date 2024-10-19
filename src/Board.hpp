@@ -41,6 +41,20 @@ public:
     std::string toString() const;
     std::string uciMoveHistory() const;
     Bitboard getSlidingPieces(PieceColor side) const;
+    bool isDraw();
+
+    Bitboard whitePawns = 0;
+    Bitboard whiteKnights = 0;
+    Bitboard whiteBishops = 0;
+    Bitboard whiteRooks = 0;
+    Bitboard whiteQueens = 0;
+    Bitboard whiteKing = 0;
+    Bitboard blackPawns = 0;
+    Bitboard blackKnights = 0;
+    Bitboard blackBishops = 0;
+    Bitboard blackRooks = 0;
+    Bitboard blackQueens = 0;
+    Bitboard blackKing = 0;
 
     PieceColor sideToMove = WHITE;
     Square whiteKingPosition = 0;
@@ -122,19 +136,6 @@ public:
 
 
 private:
-    Bitboard whitePawns = 0;
-    Bitboard whiteKnights = 0;
-    Bitboard whiteBishops = 0;
-    Bitboard whiteRooks = 0;
-    Bitboard whiteQueens = 0;
-    Bitboard whiteKing = 0;
-    Bitboard blackPawns = 0;
-    Bitboard blackKnights = 0;
-    Bitboard blackBishops = 0;
-    Bitboard blackRooks = 0;
-    Bitboard blackQueens = 0;
-    Bitboard blackKing = 0;
-
     std::array<Piece, 64> board{};
 
     Bitboard whiteAttackingSquares = 0;

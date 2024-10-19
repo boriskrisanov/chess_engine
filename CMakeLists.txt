@@ -16,6 +16,10 @@ add_executable(chess_cpp src/main.cpp
         src/Square.hpp
         src/utils.hpp
         src/tests.hpp
+        src/search.cpp
+        src/search.hpp
+        src/eval.cpp
+        src/eval.hpp
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
