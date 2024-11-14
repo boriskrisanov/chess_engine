@@ -53,6 +53,15 @@ int main()
                 cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
                 cout << "positions evaluated: " << debugStats.positionsEvaluated << "\n";
             }
+            else if (mode == "time") // Not a standard UCI command
+            {
+                uint32_t timeLimitMilliseconds;
+                cin >> timeLimitMilliseconds;
+                SearchResult searchResult = timeLimitedSearch(board, std::chrono::milliseconds{timeLimitMilliseconds});
+                cout << "bestmove " << static_cast<string>(searchResult.bestMove) << "\n";
+                cout << "eval " << searchResult.standardEval() << "\n";
+                cout << "positions evaluated: " << debugStats.positionsEvaluated << "\n";
+            }
         }
         else if (command == "d")
         {

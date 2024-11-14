@@ -1,8 +1,8 @@
 #include "search.hpp"
 
 #include <algorithm>
-#include <corecrt_startup.h>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include "eval.hpp"
@@ -15,6 +15,16 @@ constexpr int NEGATIVE_INFINITY = std::numeric_limits<int>::min() + 1;
 constexpr size_t TRANSPOSITION_TABLE_SIZE_MB = 10;
 
 DebugStats debugStats{};
+
+struct SearchState
+{
+    std::thread thread;
+    bool interruptSearch = false;
+    std::optional<SearchResult> bestMove;
+    int depth = 0; // Depth fully searched
+};
+
+SearchState searchState;
 
 enum class NodeKind
 {
@@ -60,6 +70,10 @@ const TT_Entry* getTransposition(uint64_t hash)
 
 void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, int eval)
 {
+    if (searchState.interruptSearch)
+    {
+        return;
+    }
     transpositionTable.at(index(hash)) = {kind, hash, depth, eval};
 }
 
@@ -102,6 +116,12 @@ void orderMoves(Board& board, vector<Move>& moves)
 // Beta is the worst possible score for the opponent, anything higher than beta will not be chosen by the opponent
 int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
 {
+    if (searchState.interruptSearch)
+    {
+        // The value returned doesn't matter because it won't be used anyway
+        return 0;
+    }
+
     const TT_Entry* ttEntry = getTransposition(board.getHash());
     if (ttEntry != nullptr && false)
     {
@@ -207,4 +227,41 @@ SearchResult bestMove(Board& board, uint8_t depth)
     }
 
     return {board.sideToMove, bestMove, bestEval};
+}
+
+SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit)
+{
+    searchState = {};
+
+    searchState.thread = std::thread{
+        [&board]
+        {
+            while (true)
+            {
+                SearchResult possibleBestMove = bestMove(board, searchState.depth + 1);
+                if (searchState.interruptSearch)
+                {
+                    // Search is incomplete, so we discard the results
+                    break;
+                }
+                searchState.depth++;
+                std::cout << "depth " << searchState.depth << "\n";
+                searchState.bestMove = possibleBestMove;
+            }
+        }
+    };
+
+    std::this_thread::sleep_for(timeLimit);
+
+    searchState.interruptSearch = true;
+    searchState.thread.join();
+
+    if (!searchState.bestMove.has_value())
+    {
+        std::cout << "Did not have time to search to depth 1\n";
+        // TODO: Proper error handing
+        std::exit(1);
+    }
+
+    return searchState.bestMove.value();
 }
