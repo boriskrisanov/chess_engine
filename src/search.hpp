@@ -1,4 +1,6 @@
 #pragma once
+#include <chrono>
+
 #include "Board.hpp"
 #include "Move.hpp"
 #include "Piece.hpp"
@@ -28,3 +30,4 @@ struct SearchResult
 };
 
 SearchResult bestMove(Board& board, uint8_t depth);
+SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit);
