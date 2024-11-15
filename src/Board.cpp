@@ -537,6 +537,17 @@ std::vector<Move> Board::getLegalMoves()
     return generateLegalMoves(*this);
 }
 
+std::vector<Move> Board::getLegalCaptures()
+{
+    std::vector<Move> captures{};
+    captures.reserve(10); // Completely arbitrary, it's probably better to over-allocate than reallocating multiple times
+    for (Move move : generateLegalMoves(*this))
+    {
+        captures.push_back(move);
+    }
+    return captures;
+}
+
 void Board::getPseudoLegalMoves(std::vector<Move>& moves) const
 {
     for (Square i = 0; i < 64; i++)

@@ -110,6 +110,7 @@ void orderMoves(Board& board, vector<Move>& moves)
     });
 }
 
+int qSearch(Board& board, int alpha, int beta);
 
 // Alpha - lower bound, beta - upper bound
 // Anything less than alpha is useless because there's already a better line available
@@ -146,8 +147,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     if (depth == 0)
     {
         // TODO: Store in TT? (depends on eval function complexity)
-        debugStats.positionsEvaluated++;
-        return staticEval(board);
+        return qSearch(board, alpha, beta);
     }
 
     vector<Move> moves = board.getLegalMoves();
@@ -204,6 +204,47 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     }
 
     storeTransposition(nodeKind, board.getHash(), depth, alpha);
+    return alpha;
+}
+
+// Continues the search until a "quiet" position is reached (no possible captures)
+int qSearch(Board& board, int alpha, int beta)
+{
+    if (searchState.interruptSearch)
+    {
+        return 0;
+    }
+
+    int eval = staticEval(board);
+    debugStats.positionsEvaluated++;
+    if (eval >= beta)
+    {
+        return beta;
+    }
+    if (eval > alpha)
+    {
+        alpha = eval;
+    }
+
+    vector<Move> captures = board.getLegalCaptures();
+    orderMoves(board, captures);
+
+    for (Move move : captures)
+    {
+        board.makeMove(move);
+        eval = -qSearch(board, -beta, -alpha);
+        board.unmakeMove();
+
+        if (eval >= beta)
+        {
+            return beta;
+        }
+        if (eval > alpha)
+        {
+            alpha = eval;
+        }
+    }
+
     return alpha;
 }
 

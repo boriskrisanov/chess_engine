@@ -34,7 +34,7 @@ int main()
                 std::getline(cin, remainingCommand);
                 if (remainingCommand.starts_with(" moves "))
                 {
-                    // Start from 7 to ignore space at the beginning and after "moves"
+                    // Start from 7 to ignore the space at the beginning and after "moves"
                     string moves = remainingCommand.substr(7, remainingCommand.length() - 1);
                     for (const std::string& move : splitString(moves, " "))
                     {

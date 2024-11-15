@@ -35,6 +35,7 @@ public:
     void makeMove(std::string uciMove);
     void unmakeMove();
     std::vector<Move> getLegalMoves();
+    std::vector<Move> getLegalCaptures();
     void getPseudoLegalMoves(std::vector<Move>& moves) const;
     bool isSideInCheckAfterMove(Move move, PieceColor side);
     bool isPseudoLegalMoveLegal(Move move);
