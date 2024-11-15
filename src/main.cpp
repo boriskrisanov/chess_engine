@@ -32,12 +32,16 @@ int main()
                 board.loadFen(STARTING_POSITION_FEN);
                 string remainingCommand;
                 std::getline(cin, remainingCommand);
-                if (remainingCommand.starts_with(" moves"))
+                if (remainingCommand.starts_with(" moves "))
                 {
                     // Start from 7 to ignore space at the beginning and after "moves"
                     string moves = remainingCommand.substr(7, remainingCommand.length() - 1);
                     for (const std::string& move : splitString(moves, " "))
                     {
+                        if (move.empty() || move.contains(" "))
+                        {
+                            continue;
+                        }
                         board.makeMove(Move{board, move});
                     }
                 }
