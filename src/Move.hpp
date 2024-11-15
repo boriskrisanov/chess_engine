@@ -3,6 +3,8 @@
 #include "Piece.hpp"
 #include "Square.hpp"
 
+class Board;
+
 enum class MoveFlag : uint8_t
 {
     None,
@@ -19,6 +21,7 @@ class Move
 {
 public:
     Move(Square start, Square end, MoveFlag flag);
+    Move(const Board& board, std::string uciString);
     Move() = default;
     Square start() const;
     Square end() const;

@@ -163,6 +163,8 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
         Swap alpha and beta because the maximising player is now the minimising player and vice versa.
         Both are negative because the values are from the perspective of the side to move, which will now be reversed,
         and a good position for the minimising player is bad for the maximising player and vice versa.
+
+        (Maximising negative of opponent's evaluation)
          */
         const int eval = -evaluate(board, depth - 1, ply + 1, -beta, -alpha);
         board.unmakeMove();
