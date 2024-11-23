@@ -251,6 +251,7 @@ int qSearch(Board& board, int alpha, int beta)
 SearchResult bestMove(Board& board, uint8_t depth)
 {
     debugStats = DebugStats{};
+    searchState = {};
     vector<Move> moves = board.getLegalMoves();
 
     // TODO: This will crash if there are no legal moves (mate/stalemate)
