@@ -543,7 +543,10 @@ std::vector<Move> Board::getLegalCaptures()
     captures.reserve(10); // Completely arbitrary, it's probably better to over-allocate than reallocating multiple times
     for (Move move : generateLegalMoves(*this))
     {
-        captures.push_back(move);
+        if (!board[move.end()].isNone() || move.moveFlag() == MoveFlag::EnPassant)
+        {
+            captures.push_back(move);
+        }
     }
     return captures;
 }

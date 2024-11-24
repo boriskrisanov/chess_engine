@@ -215,16 +215,13 @@ int qSearch(Board& board, int alpha, int beta)
         return 0;
     }
 
-    int eval = staticEval(board);
     debugStats.positionsEvaluated++;
+    int eval = staticEval(board);
     if (eval >= beta)
     {
         return beta;
     }
-    if (eval > alpha)
-    {
-        alpha = eval;
-    }
+    alpha = std::max(alpha, eval);
 
     vector<Move> captures = board.getLegalCaptures();
     orderMoves(board, captures);
@@ -239,10 +236,7 @@ int qSearch(Board& board, int alpha, int beta)
         {
             return beta;
         }
-        if (eval > alpha)
-        {
-            alpha = eval;
-        }
+        alpha = std::max(alpha, eval);
     }
 
     return alpha;
@@ -251,7 +245,6 @@ int qSearch(Board& board, int alpha, int beta)
 SearchResult bestMove(Board& board, uint8_t depth)
 {
     debugStats = DebugStats{};
-    searchState = {};
     vector<Move> moves = board.getLegalMoves();
 
     // TODO: This will crash if there are no legal moves (mate/stalemate)
@@ -308,4 +301,9 @@ SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit
     }
 
     return searchState.bestMove.value();
+}
+
+void resetSearchState()
+{
+    searchState = {};
 }

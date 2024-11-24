@@ -1,6 +1,7 @@
 #include "tests.hpp"
 #include <iostream>
 
+#include "eval.hpp"
 #include "search.hpp"
 
 using std::cin, std::cout, std::string;
@@ -53,6 +54,7 @@ int main()
             cin >> mode;
             if (mode == "depth")
             {
+                resetSearchState();
                 int depth;
                 cin >> depth;
                 if (depth < 0)
@@ -70,6 +72,7 @@ int main()
             }
             else if (mode == "time") // Not a standard UCI command
             {
+                resetSearchState();
                 uint32_t timeLimitMilliseconds;
                 cin >> timeLimitMilliseconds;
                 SearchResult searchResult = timeLimitedSearch(board, std::chrono::milliseconds{timeLimitMilliseconds});
@@ -81,6 +84,10 @@ int main()
         else if (command == "d")
         {
             cout << board.toString() << "\n";
+            cout << "FEN: " <<  board.getFen() << "\n";
+            cout << "Hash: " <<  board.getHash() << "\n";
+            cout << "--- Evaluation ---" << "\n";
+            printDebugEval(board);
         }
         else if (command == "quit")
         {
