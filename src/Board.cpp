@@ -630,10 +630,51 @@ Bitboard Board::getSlidingPieces(PieceColor side) const
                : blackBishops | blackRooks | blackQueens;
 }
 
-bool Board::isDraw()
+bool Board::isStalemate()
+{
+    return !isCheck() && !getLegalMoves().empty();
+}
+
+bool Board::isInsufficientMaterial() const
+{
+    // TODO: Improve insufficient material detection
+
+    const int whitePawnCount = std::popcount(whitePawns);
+    const int whiteKnightCount = std::popcount(whiteKnights);
+    const int whiteBishopCount = std::popcount(whiteBishops);
+    const int whiteRookCount = std::popcount(whiteRooks);
+    const int whiteQueenCount = std::popcount(whiteQueens);
+
+    const int blackPawnCount = std::popcount(blackPawns);
+    const int blackKnightCount = std::popcount(blackKnights);
+    const int blackBishopCount = std::popcount(blackBishops);
+    const int blackRookCount = std::popcount(blackRooks);
+    const int blackQueenCount = std::popcount(blackQueens);
+
+    if (whiteQueenCount > 0 || blackQueenCount > 0 || whiteRookCount > 0 || blackRookCount > 0 || whitePawnCount > 0 || blackPawnCount > 0) {
+        return false;
+    }
+
+    if (whiteKnightCount > 2 || blackKnightCount > 2) {
+        return false;
+    }
+
+    if (whiteBishopCount > 2 || blackBishopCount > 2) {
+        return false;
+    }
+
+    return true;
+}
+
+bool Board::isThreefoldRepetition()
 {
     // TODO
     return false;
+}
+
+bool Board::isDraw()
+{
+    return halfMoveClock >= 50 || isStalemate() || isInsufficientMaterial() || isThreefoldRepetition();
 }
 
 void Board::updateAttackingSquares()

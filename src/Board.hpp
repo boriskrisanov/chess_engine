@@ -85,6 +85,16 @@ public:
         return (squaresAttackedBySide & kingBitboard) != 0;
     }
 
+    bool isCheck() const
+    {
+        return isSideInCheck(WHITE) || isSideInCheck(BLACK);
+    }
+
+    bool isCheckmate(PieceColor side)
+    {
+        return isSideInCheck(side) && getLegalMoves().empty();
+    }
+
     Piece operator[](Square index) const
     {
         return board[index];
@@ -166,4 +176,8 @@ private:
     void removePiece(Piece piece, Square position);
     void removePiece(MoveFlag promotedPiece, PieceColor side, Square position);
     void updateAttackingSquares();
+
+    bool isStalemate();
+    bool isInsufficientMaterial() const;
+    bool isThreefoldRepetition();
 };
