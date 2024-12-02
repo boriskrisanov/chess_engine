@@ -36,31 +36,7 @@ public:
             MoveFlag::PromotionRook || moveFlag() == MoveFlag::PromotionQueen;
     }
 
-    explicit operator std::string() const
-    {
-        std::string s = square::toString(start()) + square::toString(end());
-        if (isPromotion())
-        {
-            switch (moveFlag())
-            {
-            case MoveFlag::PromotionKnight:
-                s += "n";
-                break;
-            case MoveFlag::PromotionBishop:
-                s += "b";
-                break;
-            case MoveFlag::PromotionRook:
-                s += "r";
-                break;
-            case MoveFlag::PromotionQueen:
-                s += "q";
-                break;
-            default:
-                break;
-            }
-        }
-        return s;
-    }
+    explicit operator std::string() const;
 
 private:
     uint16_t moveData = 0;

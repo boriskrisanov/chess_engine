@@ -127,7 +127,7 @@ string Board::getFen() const
     }
 
     fen.append(sideToMove == WHITE ? " w " : " b ");
-    fen.append("KQkq"); // TODO: castling rights
+    fen.append("KQkq "); // TODO: castling rights
     fen.append(enPassantTargetSquare == -1 ? "-" : square::toString(enPassantTargetSquare));
     fen.append(" ").append(std::to_string(halfMoveClock));
     fen.append(" ").append(std::to_string(moveHistory.size()));
@@ -138,7 +138,6 @@ string Board::getFen() const
 
 void Board::makeMove(Move move)
 {
-    hashHistory.push(hash());
     boardHistory.push(BoardState{
         enPassantTargetSquare, whiteAttackingSquares, whitePawnAttackingSquares, blackAttackingSquares,
         blackPawnAttackingSquares, whiteCanShortCastle, whiteCanLongCastle, blackCanShortCastle, blackCanLongCastle,
@@ -336,15 +335,10 @@ void Board::makeMove(Move move)
         }
     }
 
-    // if (board[square::fromString("h7")].isNone() && board[
-    //     square::fromString("h6")].isNone() && board[square::fromString("h5")].isNone())
-    // {
-    //     std::cout << "c make end" << "\n";
-    // }
-
     sideToMove = oppositeColor(sideToMove);
 
     updateAttackingSquares();
+    hashHistory.push(hash());
 }
 
 void Board::makeMove(std::string uciMove)
@@ -632,7 +626,7 @@ Bitboard Board::getSlidingPieces(PieceColor side) const
 
 bool Board::isStalemate()
 {
-    return !isCheck() && !getLegalMoves().empty();
+    return !isCheck() && getLegalMoves().empty();
 }
 
 bool Board::isInsufficientMaterial() const

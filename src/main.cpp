@@ -1,7 +1,10 @@
+#include <fstream>
+
 #include "tests.hpp"
 #include <iostream>
 
 #include "eval.hpp"
+#include "mcts.hpp"
 #include "search.hpp"
 
 using std::cin, std::cout, std::string;
@@ -11,7 +14,7 @@ int main()
 {
     Board board;
     board.loadFen(STARTING_POSITION_FEN);
-    board.loadFen("r3kr2/pppqb1pp/2np1n2/4p2b/P1B1P3/2N1BN1P/1PP2PP1/R2Q1RK1 w q - 1 12");
+    board.loadFen("7r/p4k1P/2p2P2/6p1/1n6/1Pp1N1P1/r7/1KBR3R b - - 1 34");
     while (true)
     {
         string command;
@@ -88,6 +91,29 @@ int main()
             cout << "Hash: " <<  board.getHash() << "\n";
             cout << "--- Evaluation ---" << "\n";
             printDebugEval(board);
+        }
+        else if (command == "mcts")
+        {
+            int iterations;
+            cin >> iterations;
+            const auto [whiteWinProbability, blackWinProbability, drawProbability] = mcts(board, iterations);
+            cout << "P(W) = " << whiteWinProbability << "\n";
+            cout << "P(B) = " << blackWinProbability << "\n";
+            cout << "P(D) = " << drawProbability << "\n";
+        }
+        else if (command == "mcts_gen_data")
+        {
+            string file;
+            cin >> file;
+            int iterations;
+            cin >> iterations;
+
+            std::ifstream positionFile;
+            string currentFen;
+            while (std::getline(positionFile, currentFen))
+            {
+
+            }
         }
         else if (command == "quit")
         {
