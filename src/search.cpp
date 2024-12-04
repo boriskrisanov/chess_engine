@@ -110,6 +110,7 @@ void orderMoves(Board& board, vector<Move>& moves)
     });
 }
 
+int qSearch(Board& board, int alpha, int beta);
 
 // Alpha - lower bound, beta - upper bound
 // Anything less than alpha is useless because there's already a better line available
@@ -146,8 +147,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     if (depth == 0)
     {
         // TODO: Store in TT? (depends on eval function complexity)
-        debugStats.positionsEvaluated++;
-        return staticEval(board);
+        return qSearch(board, alpha, beta);
     }
 
     vector<Move> moves = board.getLegalMoves();
@@ -163,6 +163,8 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
         Swap alpha and beta because the maximising player is now the minimising player and vice versa.
         Both are negative because the values are from the perspective of the side to move, which will now be reversed,
         and a good position for the minimising player is bad for the maximising player and vice versa.
+
+        (Maximising negative of opponent's evaluation)
          */
         const int eval = -evaluate(board, depth - 1, ply + 1, -beta, -alpha);
         board.unmakeMove();
@@ -202,6 +204,41 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     }
 
     storeTransposition(nodeKind, board.getHash(), depth, alpha);
+    return alpha;
+}
+
+// Continues the search until a "quiet" position is reached (no possible captures)
+int qSearch(Board& board, int alpha, int beta)
+{
+    if (searchState.interruptSearch)
+    {
+        return 0;
+    }
+
+    debugStats.positionsEvaluated++;
+    int eval = staticEval(board);
+    if (eval >= beta)
+    {
+        return beta;
+    }
+    alpha = std::max(alpha, eval);
+
+    vector<Move> captures = board.getLegalCaptures();
+    orderMoves(board, captures);
+
+    for (Move move : captures)
+    {
+        board.makeMove(move);
+        eval = -qSearch(board, -beta, -alpha);
+        board.unmakeMove();
+
+        if (eval >= beta)
+        {
+            return beta;
+        }
+        alpha = std::max(alpha, eval);
+    }
+
     return alpha;
 }
 
@@ -264,4 +301,9 @@ SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit
     }
 
     return searchState.bestMove.value();
+}
+
+void resetSearchState()
+{
+    searchState = {};
 }

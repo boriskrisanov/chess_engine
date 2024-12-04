@@ -31,3 +31,4 @@ struct SearchResult
 
 SearchResult bestMove(Board& board, uint8_t depth);
 SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit);
+void resetSearchState();

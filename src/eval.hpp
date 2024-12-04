@@ -3,6 +3,7 @@
 
 #include "Board.hpp"
 #include "Piece.hpp"
+#include "search.hpp"
 
 constexpr int PAWN_VALUE = 100;
 constexpr int KNIGHT_VALUE = 300;
@@ -12,3 +13,4 @@ constexpr int QUEEN_VALUE = 900;
 
 uint16_t pieceValue(PieceKind kind);
 int staticEval(const Board& board);
+void printDebugEval(const Board& board);

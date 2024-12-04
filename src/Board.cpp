@@ -127,7 +127,7 @@ string Board::getFen() const
     }
 
     fen.append(sideToMove == WHITE ? " w " : " b ");
-    fen.append("KQkq"); // TODO: castling rights
+    fen.append("KQkq "); // TODO: castling rights
     fen.append(enPassantTargetSquare == -1 ? "-" : square::toString(enPassantTargetSquare));
     fen.append(" ").append(std::to_string(halfMoveClock));
     fen.append(" ").append(std::to_string(moveHistory.size()));
@@ -138,7 +138,6 @@ string Board::getFen() const
 
 void Board::makeMove(Move move)
 {
-    hashHistory.push(hash());
     boardHistory.push(BoardState{
         enPassantTargetSquare, whiteAttackingSquares, whitePawnAttackingSquares, blackAttackingSquares,
         blackPawnAttackingSquares, whiteCanShortCastle, whiteCanLongCastle, blackCanShortCastle, blackCanLongCastle,
@@ -336,15 +335,10 @@ void Board::makeMove(Move move)
         }
     }
 
-    // if (board[square::fromString("h7")].isNone() && board[
-    //     square::fromString("h6")].isNone() && board[square::fromString("h5")].isNone())
-    // {
-    //     std::cout << "c make end" << "\n";
-    // }
-
     sideToMove = oppositeColor(sideToMove);
 
     updateAttackingSquares();
+    hashHistory.push(hash());
 }
 
 void Board::makeMove(std::string uciMove)
@@ -537,6 +531,20 @@ std::vector<Move> Board::getLegalMoves()
     return generateLegalMoves(*this);
 }
 
+std::vector<Move> Board::getLegalCaptures()
+{
+    std::vector<Move> captures{};
+    captures.reserve(10); // Completely arbitrary, it's probably better to over-allocate than reallocating multiple times
+    for (Move move : generateLegalMoves(*this))
+    {
+        if (!board[move.end()].isNone() || move.moveFlag() == MoveFlag::EnPassant)
+        {
+            captures.push_back(move);
+        }
+    }
+    return captures;
+}
+
 void Board::getPseudoLegalMoves(std::vector<Move>& moves) const
 {
     for (Square i = 0; i < 64; i++)
@@ -616,10 +624,51 @@ Bitboard Board::getSlidingPieces(PieceColor side) const
                : blackBishops | blackRooks | blackQueens;
 }
 
-bool Board::isDraw()
+bool Board::isStalemate()
+{
+    return !isCheck() && getLegalMoves().empty();
+}
+
+bool Board::isInsufficientMaterial() const
+{
+    // TODO: Improve insufficient material detection
+
+    const int whitePawnCount = std::popcount(whitePawns);
+    const int whiteKnightCount = std::popcount(whiteKnights);
+    const int whiteBishopCount = std::popcount(whiteBishops);
+    const int whiteRookCount = std::popcount(whiteRooks);
+    const int whiteQueenCount = std::popcount(whiteQueens);
+
+    const int blackPawnCount = std::popcount(blackPawns);
+    const int blackKnightCount = std::popcount(blackKnights);
+    const int blackBishopCount = std::popcount(blackBishops);
+    const int blackRookCount = std::popcount(blackRooks);
+    const int blackQueenCount = std::popcount(blackQueens);
+
+    if (whiteQueenCount > 0 || blackQueenCount > 0 || whiteRookCount > 0 || blackRookCount > 0 || whitePawnCount > 0 || blackPawnCount > 0) {
+        return false;
+    }
+
+    if (whiteKnightCount > 2 || blackKnightCount > 2) {
+        return false;
+    }
+
+    if (whiteBishopCount > 2 || blackBishopCount > 2) {
+        return false;
+    }
+
+    return true;
+}
+
+bool Board::isThreefoldRepetition()
 {
     // TODO
     return false;
+}
+
+bool Board::isDraw()
+{
+    return halfMoveClock >= 50 || isStalemate() || isInsufficientMaterial() || isThreefoldRepetition();
 }
 
 void Board::updateAttackingSquares()

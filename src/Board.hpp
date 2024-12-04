@@ -35,6 +35,7 @@ public:
     void makeMove(std::string uciMove);
     void unmakeMove();
     std::vector<Move> getLegalMoves();
+    std::vector<Move> getLegalCaptures();
     void getPseudoLegalMoves(std::vector<Move>& moves) const;
     bool isSideInCheckAfterMove(Move move, PieceColor side);
     bool isPseudoLegalMoveLegal(Move move);
@@ -82,6 +83,16 @@ public:
         Bitboard kingBitboard = side == WHITE ? whiteKing : blackKing;
         Bitboard squaresAttackedBySide = getAttackingSquares(oppositeColor(side));
         return (squaresAttackedBySide & kingBitboard) != 0;
+    }
+
+    bool isCheck() const
+    {
+        return isSideInCheck(WHITE) || isSideInCheck(BLACK);
+    }
+
+    bool isCheckmate(PieceColor side)
+    {
+        return isSideInCheck(side) && getLegalMoves().empty();
     }
 
     Piece operator[](Square index) const
@@ -165,4 +176,8 @@ private:
     void removePiece(Piece piece, Square position);
     void removePiece(MoveFlag promotedPiece, PieceColor side, Square position);
     void updateAttackingSquares();
+
+    bool isStalemate();
+    bool isInsufficientMaterial() const;
+    bool isThreefoldRepetition();
 };
