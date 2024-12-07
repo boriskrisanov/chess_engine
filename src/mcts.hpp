@@ -4,8 +4,8 @@
 
 struct MCTSResult
 {
-    double whiteWinProbability;
-    double blackWinProbability;
+    double winProbability;
+    double lossProbability;
     double drawProbability;
 };
 

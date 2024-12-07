@@ -96,9 +96,9 @@ int main()
         {
             int iterations;
             cin >> iterations;
-            const auto [whiteWinProbability, blackWinProbability, drawProbability] = mcts(board, iterations);
-            cout << "P(W) = " << whiteWinProbability << "\n";
-            cout << "P(B) = " << blackWinProbability << "\n";
+            const auto [winProbability, lossProbability, drawProbability] = mcts(board, iterations);
+            cout << "P(W) = " << winProbability << "\n";
+            cout << "P(L) = " << lossProbability << "\n";
             cout << "P(D) = " << drawProbability << "\n";
         }
         else if (command == "mcts_gen_data")

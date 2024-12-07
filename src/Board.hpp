@@ -92,7 +92,7 @@ public:
 
     bool isCheckmate(PieceColor side)
     {
-        return isSideInCheck(side) && getLegalMoves().empty();
+        return sideToMove == side && isSideInCheck(side) && getLegalMoves().empty();
     }
 
     Piece operator[](Square index) const

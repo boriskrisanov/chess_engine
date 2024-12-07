@@ -31,6 +31,7 @@ GameResult getGameResult(Board& board, PieceColor side)
     }
     if (board.isCheckmate(side))
     {
+        std::cout << "Loss\n";
         return LOSS;
     }
     if (board.isCheckmate(oppositeColor(side)))
@@ -64,7 +65,7 @@ double UCB_Score(const Node& parent, const Node& child)
 }
 
 void MCTSIteration(std::unordered_map<uint64_t, Node>& nodes, Board board, std::mt19937& rng,
-                   std::vector<uint64_t>& visitedNodes, PieceColor side)
+                   std::vector<uint64_t>& visitedNodes, const PieceColor side)
 {
     visitedNodes.clear();
     uint64_t currentNode = board.getHash();
@@ -85,7 +86,7 @@ void MCTSIteration(std::unordered_map<uint64_t, Node>& nodes, Board board, std::
             if (!nodes.contains(newNode))
             {
                 // Node has never been visited
-                nodes[newNode] = Node{0, 0, 0, 1};
+                nodes[newNode] = Node{};
                 const GameResult rolloutResult = MCTSRollout(board, rng, side);
                 visitedNodes.push_back(currentNode);
                 visitedNodes.push_back(newNode);
@@ -157,10 +158,27 @@ MCTSResult mcts(Board board, uint64_t iterations)
         MCTSIteration(nodes, board, rng, visitedNodes, side);
     }
 
-    uint64_t whiteWins = side == WHITE ? nodes[board.getHash()].wins : nodes[board.getHash()].losses;
-    uint64_t blackWins = side == WHITE ? nodes[board.getHash()].losses : nodes[board.getHash()].wins;
+    uint64_t maxVisits = 0;
+    // TODO: This will crash if there are no legal moves
+    Move bestMove = board.getLegalMoves()[0];
+    for (Move move : board.getLegalMoves())
+    {
+        board.makeMove(move);
+        const uint64_t hash = board.getHash();
+        board.unmakeMove();
+
+        if (nodes[hash].visits > maxVisits)
+        {
+            maxVisits = nodes[hash].visits;
+            bestMove = move;
+        }
+    }
+    board.makeMove(bestMove);
+
+    uint64_t wins = nodes[board.getHash()].wins;
+    uint64_t losses = nodes[board.getHash()].losses;
     uint64_t draws = nodes[board.getHash()].draws;
     const double visits = static_cast<double>(nodes[board.getHash()].visits);
 
-    return {static_cast<double>(whiteWins) / visits, static_cast<double>(blackWins) / visits, static_cast<double>(draws) / visits};
+    return {static_cast<double>(wins) / visits, static_cast<double>(losses) / visits, static_cast<double>(draws) / visits};
 }
