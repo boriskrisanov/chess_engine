@@ -169,6 +169,7 @@ private:
     std::stack<BoardState> boardHistory;
 
     uint64_t hash() const;
+    uint64_t hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece, uint64_t currentHash) const;
 
     void movePiece(Piece piece, Piece capturedPiece, Square start, Square end);
     void addPiece(Piece piece, Square position);

@@ -1,7 +1,6 @@
 #pragma once
 #include <chrono>
 
-#include "Board.hpp"
 #include "Move.hpp"
 #include "Piece.hpp"
 
