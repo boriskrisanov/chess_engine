@@ -24,7 +24,7 @@ struct SearchResult
 
     double standardEval() const {
         // Divide by 100 to convert centipawns to pawns
-        return static_cast<double>(sideToMove == BLACK ? eval * -1 : eval) / 100;
+        return static_cast<double>(sideToMove == PieceColor::BLACK ? eval * -1 : eval) / 100;
     }
 };
 

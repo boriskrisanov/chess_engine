@@ -1,7 +1,8 @@
 #include "eval.hpp"
 
 #include <iostream>
-
+#include <array>
+#include "Board.hpp"
 #include "search.hpp"
 
 std::array<int, 64> switchOpeningWeightSide(std::array<int, 64> weights)
