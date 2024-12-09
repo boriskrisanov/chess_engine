@@ -776,7 +776,7 @@ uint64_t Board::hash() const
 
 uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece, uint64_t currentHash) const
 {
-    return hash();
+    // return hash();
     // TODO
 
 

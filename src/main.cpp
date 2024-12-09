@@ -106,10 +106,12 @@ int main()
         {
             int iterations;
             cin >> iterations;
-            const auto [winProbability, lossProbability, drawProbability] = mcts(board, iterations);
-            cout << "P(W) = " << winProbability << "\n";
-            cout << "P(L) = " << lossProbability << "\n";
-            cout << "P(D) = " << drawProbability << "\n";
+            int mctsIterations;
+            cin >> mctsIterations;
+            const auto [w, b, d] = mctsEval(board, mctsIterations, iterations);
+            cout << "P(W) = " << w << "\n";
+            cout << "P(B) = " << b << "\n";
+            cout << "P(D) = " << d << "\n";
         }
         else if (command == "mcts_gen_data")
         {

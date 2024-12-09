@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <array>
+#include <cmath>
 #include "Board.hpp"
 #include "search.hpp"
 

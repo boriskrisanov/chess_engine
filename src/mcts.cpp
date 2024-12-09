@@ -57,7 +57,8 @@ double UCB_Score(const Node& parent, const Node& child)
     using std::sqrt, std::log;
     const double winRatio = static_cast<double>(child.wins) / static_cast<double>(child.visits);
     const double explorationConstant = sqrt(2);
-    const double explorationParameter = sqrt(log(static_cast<double>(parent.visits)) / static_cast<double>(child.visits));
+    const double explorationParameter = sqrt(
+        log(static_cast<double>(parent.visits)) / static_cast<double>(child.visits));
     return winRatio + explorationConstant * explorationParameter;
 }
 
@@ -143,7 +144,7 @@ void MCTSIteration(std::unordered_map<uint64_t, Node>& nodes, Board board, std::
     }
 }
 
-MCTSResult mcts(Board board, uint64_t iterations)
+Move mcts(Board board, uint64_t iterations)
 {
     std::unordered_map<uint64_t, Node> nodes;
     nodes[board.getHash()] = Node{0, 0, 0, 1};
@@ -172,12 +173,51 @@ MCTSResult mcts(Board board, uint64_t iterations)
             bestMove = move;
         }
     }
+    return bestMove;
+
     board.makeMove(bestMove);
 
-    uint64_t wins = nodes[board.getHash()].wins;
-    uint64_t losses = nodes[board.getHash()].losses;
-    uint64_t draws = nodes[board.getHash()].draws;
-    const double visits = static_cast<double>(nodes[board.getHash()].visits);
+    // uint64_t wins = nodes[board.getHash()].wins;
+    // uint64_t losses = nodes[board.getHash()].losses;
+    // uint64_t draws = nodes[board.getHash()].draws;
+    // const double visits = static_cast<double>(nodes[board.getHash()].visits);
+    //
+    // return {static_cast<double>(wins) / visits, static_cast<double>(losses) / visits, static_cast<double>(draws) / visits};
+}
 
-    return {static_cast<double>(wins) / visits, static_cast<double>(losses) / visits, static_cast<double>(draws) / visits};
+MCTSResult mctsEval(Board board, uint64_t mctsIterations, uint64_t totalIterations)
+{
+    // TODO: Debug crash
+    uint64_t whiteWins = 0;
+    uint64_t blackWins = 0;
+    uint64_t draws = 0;
+
+    for (int i = 0; i < totalIterations; i++)
+    {
+        std::cout << "Iteration " << i + 1 << "/" << totalIterations << "\n";
+        Board board2 = board;
+        while (!(board2.isCheckmate(WHITE) || board2.isCheckmate(BLACK) || board2.isDraw()))
+        {
+            Move bestMove = mcts(board2, mctsIterations);
+            board2.makeMove(bestMove);
+        }
+        if (board2.isCheckmate(WHITE))
+        {
+            blackWins++;
+        }
+        else if (board2.isCheckmate(BLACK))
+        {
+            whiteWins++;
+        }
+        else
+        {
+            draws++;
+        }
+    }
+
+    return {
+        static_cast<double>(whiteWins) / static_cast<double>(totalIterations),
+        static_cast<double>(blackWins) / static_cast<double>(totalIterations),
+        static_cast<double>(draws) / static_cast<double>(totalIterations)
+    };
 }

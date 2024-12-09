@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <cstdint>
 
 typedef uint8_t Square;
 

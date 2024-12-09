@@ -2,6 +2,7 @@
 
 #include "Piece.hpp"
 #include "Square.hpp"
+#include <cstdint>
 
 class Board;
 
