@@ -4,8 +4,6 @@
 #include <random>
 #include <unordered_map>
 
-#include "search.hpp"
-
 struct Node
 {
     uint64_t wins = 0;
@@ -31,7 +29,6 @@ GameResult getGameResult(Board& board, PieceColor side)
     }
     if (board.isCheckmate(side))
     {
-        std::cout << "Loss\n";
         return LOSS;
     }
     if (board.isCheckmate(oppositeColor(side)))
@@ -69,12 +66,12 @@ void MCTSIteration(std::unordered_map<uint64_t, Node>& nodes, Board board, std::
 {
     visitedNodes.clear();
     uint64_t currentNode = board.getHash();
-    const auto moves = board.getLegalMoves();
     GameResult gameResult = getGameResult(board, side);
     while (gameResult == GameResult::NONE)
     {
         // Selection
         // This is ok because there will always be at least one legal move (otherwise the loop wouldn't run)
+        const auto moves = board.getLegalMoves();
         Move selectedMove = moves[0];
         double bestScore = 0;
         for (Move move : moves)
@@ -93,25 +90,27 @@ void MCTSIteration(std::unordered_map<uint64_t, Node>& nodes, Board board, std::
                 for (uint64_t node : visitedNodes)
                 {
                     nodes[node].visits++;
+                    // ReSharper disable once CppIncompleteSwitchStatement
                     switch (rolloutResult)
                     {
                     case GameResult::WIN:
                         nodes[node].wins++;
-                        return;
+                        break;
                     case GameResult::LOSS:
                         nodes[node].losses++;
-                        return;
+                        break;
                     case GameResult::DRAW:
                         nodes[node].draws++;
-                        return;
-                        // ReSharper disable once CppDFAUnreachableCode
-                    default: return;
+                        break;
+                    default:
+                        break;
                     }
                 }
+                return;
             }
 
             // UCB
-            const double score = UCB_Score(nodes[board.getHash()], nodes[newNode]);
+            const double score = UCB_Score(nodes[currentNode], nodes[newNode]);
             if (score > bestScore)
             {
                 bestScore = score;
@@ -147,7 +146,7 @@ void MCTSIteration(std::unordered_map<uint64_t, Node>& nodes, Board board, std::
 MCTSResult mcts(Board board, uint64_t iterations)
 {
     std::unordered_map<uint64_t, Node> nodes;
-    nodes[board.getHash()] = Node{};
+    nodes[board.getHash()] = Node{0, 0, 0, 1};
     std::random_device randomDevice;
     std::mt19937 rng{randomDevice()};
 

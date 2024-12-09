@@ -524,7 +524,8 @@ std::vector<Move> Board::getLegalMoves()
 std::vector<Move> Board::getLegalCaptures()
 {
     std::vector<Move> captures{};
-    captures.reserve(10); // Completely arbitrary, it's probably better to over-allocate than reallocating multiple times
+    // Completely arbitrary, it's probably better to over-allocate than reallocating multiple times
+    captures.reserve(10);
     for (Move move : generateLegalMoves(*this))
     {
         if (!board[move.end()].isNone() || move.moveFlag() == MoveFlag::EnPassant)
@@ -635,15 +636,19 @@ bool Board::isInsufficientMaterial() const
     const int blackRookCount = std::popcount(blackRooks);
     const int blackQueenCount = std::popcount(blackQueens);
 
-    if (whiteQueenCount > 0 || blackQueenCount > 0 || whiteRookCount > 0 || blackRookCount > 0 || whitePawnCount > 0 || blackPawnCount > 0) {
+    if (whiteQueenCount > 0 || blackQueenCount > 0 || whiteRookCount > 0 || blackRookCount > 0 || whitePawnCount > 0 ||
+        blackPawnCount > 0)
+    {
         return false;
     }
 
-    if (whiteKnightCount > 2 || blackKnightCount > 2) {
+    if (whiteKnightCount > 2 || blackKnightCount > 2)
+    {
         return false;
     }
 
-    if (whiteBishopCount > 2 || blackBishopCount > 2) {
+    if (whiteBishopCount > 2 || blackBishopCount > 2)
+    {
         return false;
     }
 
@@ -771,6 +776,10 @@ uint64_t Board::hash() const
 
 uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece, uint64_t currentHash) const
 {
+    return hash();
+    // TODO
+
+
     // Remove piece from starting square
     currentHash ^= randomValueForPiece(movingPiece, move.start());
     // Add piece to new square
@@ -778,6 +787,7 @@ uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece,
     // Remove captured piece
     if (capturedPiece.kind != PieceKind::NONE)
     {
+        // TODO: En passant
         currentHash ^= randomValueForPiece(capturedPiece, move.end());
     }
 
