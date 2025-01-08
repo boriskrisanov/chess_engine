@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include "Move.hpp"
+#include <limits>
 
 typedef uint64_t Bitboard;
 

@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 
-#include "Board.hpp"
 #include "Piece.hpp"
 #include "search.hpp"
 

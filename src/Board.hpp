@@ -92,7 +92,7 @@ public:
 
     bool isCheckmate(PieceColor side)
     {
-        return isSideInCheck(side) && getLegalMoves().empty();
+        return sideToMove == side && isSideInCheck(side) && getLegalMoves().empty();
     }
 
     Piece operator[](Square index) const
@@ -145,6 +145,9 @@ public:
         return hashHistory.top();
     }
 
+    bool isStalemate();
+    bool isInsufficientMaterial() const;
+    bool isThreefoldRepetition();
 
 private:
     std::array<Piece, 64> board{};
@@ -169,6 +172,7 @@ private:
     std::stack<BoardState> boardHistory;
 
     uint64_t hash() const;
+    uint64_t hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece, uint64_t currentHash) const;
 
     void movePiece(Piece piece, Piece capturedPiece, Square start, Square end);
     void addPiece(Piece piece, Square position);
@@ -176,8 +180,4 @@ private:
     void removePiece(Piece piece, Square position);
     void removePiece(MoveFlag promotedPiece, PieceColor side, Square position);
     void updateAttackingSquares();
-
-    bool isStalemate();
-    bool isInsufficientMaterial() const;
-    bool isThreefoldRepetition();
 };

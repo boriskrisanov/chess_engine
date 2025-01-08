@@ -98,6 +98,135 @@ constexpr Bitboard rayAttackingSquares(Bitboard blockers, Square position, const
     return attackingSquares;
 }
 
+constexpr array<Bitboard, 64> knightAttackingSquares = []() consteval
+{
+    array<Bitboard, 64> bitboards{};
+    for (Square i = 0; i < 64; i++)
+    {
+        Bitboard squares = 0;
+        const auto edgeDistance = edgeDistances[i];
+        if (edgeDistance.left >= 2 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(i - 8 - 2);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.top >= 2)
+        {
+            squares |= bitboards::withSquare(i - 8 * 2 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.top >= 2)
+        {
+            squares |= bitboards::withSquare(i - 8 * 2 + 1);
+        }
+        if (edgeDistance.left >= 2 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(i - 2 + 8);
+        }
+        if (edgeDistance.right >= 2 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(i + 2 + 8);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.bottom >= 2)
+        {
+            squares |= bitboards::withSquare(i + 8 * 2 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.bottom >= 2)
+        {
+            squares |= bitboards::withSquare(i + 8 * 2 + 1);
+        }
+        if (edgeDistance.right >= 2 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(i - 8 + 2);
+        }
+        bitboards[i] = squares;
+    }
+    return bitboards;
+}();
+
+constexpr array<Bitboard, 64> whitePawnAttackingSquares = []() consteval
+{
+    array<Bitboard, 64> bitboards{};
+    for (Square i = 0; i < 64; i++)
+    {
+        Bitboard squares = 0;
+        const auto edgeDistance = edgeDistances[i];
+        if (edgeDistance.top > 0 && edgeDistance.right > 0)
+        {
+            squares |= bitboards::withSquare(i - 8 + 1);
+        }
+        if (edgeDistance.top > 0 && edgeDistance.left > 0)
+        {
+            squares |= bitboards::withSquare(i - 8 - 1);
+        }
+        bitboards[i] = squares;
+    }
+    return bitboards;
+}();
+
+constexpr array<Bitboard, 64> blackPawnAttackingSquares = []() consteval
+{
+    array<Bitboard, 64> bitboards{};
+    for (Square i = 0; i < 64; i++)
+    {
+        Bitboard squares = 0;
+        const auto edgeDistance = edgeDistances[i];
+        if (edgeDistance.bottom > 0 && edgeDistance.right > 0)
+        {
+            squares |= bitboards::withSquare(i + 8 + 1);
+        }
+        if (edgeDistance.bottom > 0 && edgeDistance.left > 0)
+        {
+            squares |= bitboards::withSquare(i + 8 - 1);
+        }
+        bitboards[i] = squares;
+    }
+    return bitboards;
+}();
+
+constexpr array<Bitboard, 64> kingAttackingSquares = []() consteval
+{
+    array<Bitboard, 64> bitboards{};
+    for (Square i = 0; i < 64; i++)
+    {
+        Bitboard squares = 0;
+        const auto edgeDistance = edgeDistances[i];
+        if (edgeDistance.left >= 1)
+        {
+            squares |= bitboards::withSquare(i - 1);
+        }
+        if (edgeDistance.right >= 1)
+        {
+            squares |= bitboards::withSquare(i + 1);
+        }
+        if (edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(i - 8);
+        }
+        if (edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(i + 8);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(i - 8 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.top >= 1)
+        {
+            squares |= bitboards::withSquare(i - 8 + 1);
+        }
+        if (edgeDistance.left >= 1 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(i + 8 - 1);
+        }
+        if (edgeDistance.right >= 1 && edgeDistance.bottom >= 1)
+        {
+            squares |= bitboards::withSquare(i + 8 + 1);
+        }
+        bitboards[i] = squares;
+    }
+    return bitboards;
+}();
+
+
 struct KingRay
 {
     Bitboard bitboard;
@@ -320,67 +449,13 @@ Bitboard generateAttackingSquares(Piece piece, Square position, const Board& boa
 {
     // TODO: Use diagonal edge distances
     Bitboard squares = 0;
-    const EdgeDistance edgeDistance = edgeDistances[position];
-
     switch (piece.kind)
     {
     case PieceKind::PAWN:
-        if (piece.color == WHITE)
-        {
-            if (edgeDistance.top > 0 && edgeDistance.right > 0)
-            {
-                squares |= bitboards::withSquare(position - 8 + 1);
-            }
-            if (edgeDistance.top > 0 && edgeDistance.left > 0)
-            {
-                squares |= bitboards::withSquare(position - 8 - 1);
-            }
-        }
-        else
-        {
-            if (edgeDistance.bottom > 0 && edgeDistance.right > 0)
-            {
-                squares |= bitboards::withSquare(position + 8 + 1);
-            }
-            if (edgeDistance.bottom > 0 && edgeDistance.left > 0)
-            {
-                squares |= bitboards::withSquare(position + 8 - 1);
-            }
-        }
+        squares = piece.color == WHITE ? whitePawnAttackingSquares[position] : blackPawnAttackingSquares[position];
         break;
     case PieceKind::KNIGHT:
-        if (edgeDistance.left >= 2 && edgeDistance.top >= 1)
-        {
-            squares |= bitboards::withSquare(position - 8 - 2);
-        }
-        if (edgeDistance.left >= 1 && edgeDistance.top >= 2)
-        {
-            squares |= bitboards::withSquare(position - 8 * 2 - 1);
-        }
-        if (edgeDistance.right >= 1 && edgeDistance.top >= 2)
-        {
-            squares |= bitboards::withSquare(position - 8 * 2 + 1);
-        }
-        if (edgeDistance.left >= 2 && edgeDistance.bottom >= 1)
-        {
-            squares |= bitboards::withSquare(position - 2 + 8);
-        }
-        if (edgeDistance.right >= 2 && edgeDistance.bottom >= 1)
-        {
-            squares |= bitboards::withSquare(position + 2 + 8);
-        }
-        if (edgeDistance.left >= 1 && edgeDistance.bottom >= 2)
-        {
-            squares |= bitboards::withSquare(position + 8 * 2 - 1);
-        }
-        if (edgeDistance.right >= 1 && edgeDistance.bottom >= 2)
-        {
-            squares |= bitboards::withSquare(position + 8 * 2 + 1);
-        }
-        if (edgeDistance.right >= 2 && edgeDistance.top >= 1)
-        {
-            squares |= bitboards::withSquare(position - 8 + 2);
-        }
+        squares = knightAttackingSquares[position];
         break;
     case PieceKind::BISHOP:
         {
@@ -406,38 +481,7 @@ Bitboard generateAttackingSquares(Piece piece, Square position, const Board& boa
         }
         break;
     case PieceKind::KING:
-        if (edgeDistance.left >= 1)
-        {
-            squares |= bitboards::withSquare(position - 1);
-        }
-        if (edgeDistance.right >= 1)
-        {
-            squares |= bitboards::withSquare(position + 1);
-        }
-        if (edgeDistance.top >= 1)
-        {
-            squares |= bitboards::withSquare(position - 8);
-        }
-        if (edgeDistance.bottom >= 1)
-        {
-            squares |= bitboards::withSquare(position + 8);
-        }
-        if (edgeDistance.left >= 1 && edgeDistance.top >= 1)
-        {
-            squares |= bitboards::withSquare(position - 8 - 1);
-        }
-        if (edgeDistance.right >= 1 && edgeDistance.top >= 1)
-        {
-            squares |= bitboards::withSquare(position - 8 + 1);
-        }
-        if (edgeDistance.left >= 1 && edgeDistance.bottom >= 1)
-        {
-            squares |= bitboards::withSquare(position + 8 - 1);
-        }
-        if (edgeDistance.right >= 1 && edgeDistance.bottom >= 1)
-        {
-            squares |= bitboards::withSquare(position + 8 + 1);
-        }
+        squares = kingAttackingSquares[position];
         break;
     default:
         break;

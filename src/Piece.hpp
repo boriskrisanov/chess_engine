@@ -2,7 +2,7 @@
 
 #include <cctype>
 #include <string>
-#include <type_traits>
+#include <cstdint>
 
 enum class PieceKind : uint8_t
 {

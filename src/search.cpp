@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 
+#include "Board.hpp"
 #include "eval.hpp"
 
 using std::vector;
