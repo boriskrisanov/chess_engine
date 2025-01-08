@@ -145,6 +145,9 @@ public:
         return hashHistory.top();
     }
 
+    bool isStalemate();
+    bool isInsufficientMaterial() const;
+    bool isThreefoldRepetition();
 
 private:
     std::array<Piece, 64> board{};
@@ -177,8 +180,4 @@ private:
     void removePiece(Piece piece, Square position);
     void removePiece(MoveFlag promotedPiece, PieceColor side, Square position);
     void updateAttackingSquares();
-
-    bool isStalemate();
-    bool isInsufficientMaterial() const;
-    bool isThreefoldRepetition();
 };
