@@ -27,6 +27,7 @@ public:
     Square start() const;
     Square end() const;
     MoveFlag moveFlag() const;
+    std::string getPgn(Board boardBeforeMove) const;
     int score = 0;
 
     Piece capturedPiece;

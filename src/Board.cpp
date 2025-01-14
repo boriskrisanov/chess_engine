@@ -135,6 +135,29 @@ string Board::getFen() const
     return fen;
 }
 
+std::string Board::getPgn()
+{
+    /*
+     This works by first creating a new board from the starting position and then playing each move in the
+     reversed move history. This allows us to simply look at the piece that was on the board at that time
+     to determine its type, rather than storing that information in the move. This method is rarely called, so
+     performance isn't a concern.
+    */
+
+    std::string s;
+    std::vector<Move> reverseMoveHistory;
+    std::ranges::reverse_copy(moveHistory, reverseMoveHistory.begin());
+    Board board2;
+    int moveCount = 1;
+
+    for (Move move : reverseMoveHistory)
+    {
+
+    }
+
+    return s;
+}
+
 
 void Board::makeMove(Move move)
 {

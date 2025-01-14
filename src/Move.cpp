@@ -93,6 +93,136 @@ MoveFlag Move::moveFlag() const
     return static_cast<MoveFlag>(moveData & 0b0000000000001111);
 }
 
+std::string Move::getPgn(Board boardBeforeMove) const
+{
+    // Board is copied, so no need to make the move again
+    // TODO: This was ported from the old code where the PGN was computed for the whole game at once, so there may be a
+    //  better way to do this without unmaking the move
+    boardBeforeMove.unmakeMove();
+    // Board before move
+    Board board = boardBeforeMove;
+    std::string moveString;
+
+    Piece movedPiece = board[start()];
+
+    if (movedPiece.kind == PieceKind::PAWN)
+    {
+        if (capturedPiece.kind != PieceKind::NONE)
+        {
+            // First char of square will be the file
+            moveString += square::toString(start())[0];
+        }
+    }
+    else if (moveFlag() == MoveFlag::ShortCastling)
+    {
+        moveString.append("O-O");
+    }
+    else if (moveFlag() == MoveFlag::LongCastling)
+    {
+        moveString.append("O-O-O");
+    }
+    else
+    {
+        moveString += std::toupper(movedPiece.toString()[0]);
+        /*
+        Resolve ambiguous moves where multiple pieces of the same type can move to the same square. This is done
+        by first generating all the legal moves in that position and checking if there are any moves with the same
+        destination square. If there are, we iterate over them to check which position component (file or rank)
+        is different, and add it to the move. If both the file and rank are the same (such as in the position
+        8/k7/8/8/7Q/8/8/4Q1KQ, where 3 queens can move to e4), we append the full square after the letter of the
+        moving piece.
+         */
+        std::vector<Move> movesToDestinationSquare;
+        for (Move m : board.getLegalMoves())
+        {
+            if (board[m.start()].kind == movedPiece.kind && m.end() == end())
+            {
+                movesToDestinationSquare.push_back(m);
+            }
+        }
+        if (movesToDestinationSquare.size() > 1)
+        {
+            std::vector<Square> otherStartPositions;
+            for (Move m : movesToDestinationSquare)
+            {
+                if (m.start() != start())
+                {
+                    otherStartPositions.push_back(m.start());
+                }
+            }
+
+            bool hasDifferentStartingRank = true;
+            bool hasDifferentStartingFile = true;
+
+            for (const Square startSquare : otherStartPositions)
+            {
+                if (square::rank(startSquare) == square::rank(startSquare))
+                {
+                    hasDifferentStartingRank = false;
+                }
+                if (square::file(startSquare) == square::file(startSquare))
+                {
+                    hasDifferentStartingFile = false;
+                }
+            }
+            if (hasDifferentStartingRank)
+            {
+                moveString += square::toString(start())[1];
+            }
+            else if (hasDifferentStartingFile)
+            {
+                moveString += square::toString(start())[0];
+            }
+            else
+            {
+                moveString.append(square::toString(start()));
+            }
+        }
+    }
+    if (capturedPiece.kind != PieceKind::NONE)
+    {
+        moveString.append("x");
+    }
+    if (moveFlag() == MoveFlag::ShortCastling || moveFlag() == MoveFlag::LongCastling)
+    {
+        moveString.append(square::toString(end()));
+    }
+    if (isPromotion())
+    {
+        moveString.append("=");
+
+        switch (moveFlag())
+        {
+        case MoveFlag::PromotionQueen:
+            moveString.append("q");
+            break;
+        case MoveFlag::PromotionRook:
+            moveString.append("r");
+            break;
+        case MoveFlag::PromotionBishop:
+            moveString.append("b");
+            break;
+        case MoveFlag::PromotionKnight:
+            moveString.append("n");
+            break;
+        default:
+            break;
+        }
+    }
+    if (board.isCheckmate(WHITE) || board.isCheckmate(BLACK))
+    {
+        moveString.append("#");
+    }
+    else if (board.isCheck())
+    {
+        // Comment from old code, not sure if this is still relevant
+        // TODO: Fix + incorrectly being appended at the end of the full move
+        moveString.append("+");
+    }
+
+    return moveString;
+}
+
 Move::operator std::string() const
 {
     std::string s = square::toString(start()) + square::toString(end());

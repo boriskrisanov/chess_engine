@@ -31,6 +31,7 @@ class Board
 public:
     void loadFen(std::string fen);
     std::string getFen() const;
+    std::string getPgn();
     void makeMove(Move move);
     void makeMove(std::string uciMove);
     void unmakeMove();
