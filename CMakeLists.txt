@@ -3,26 +3,57 @@ project(chess_cpp)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(chess_cpp src/main.cpp
-        src/Board.cpp
-        src/Board.hpp
-        src/Piece.hpp
-        src/Move.hpp
-        src/Move.cpp
-        src/movegen.cpp
-        src/movegen.hpp
-        src/bitboards.cpp
-        src/bitboards.hpp
-        src/Square.hpp
-        src/utils.hpp
-        src/tests.hpp
-        src/search.cpp
-        src/search.hpp
-        src/eval.cpp
-        src/eval.hpp
-        src/mcts.cpp
-        src/mcts.hpp
-)
+# BUILD_MODE: "executable" - build exe, "library" - build static lib
+
+if (NOT DEFINED BUILD_MODE)
+    message("BUILD_MODE is not defined, building executable by default")
+    set(BUILD_MODE "executable")
+endif()
+
+if (BUILD_MODE STREQUAL "library")
+    add_executable(library
+            src/Board.cpp
+            src/Board.hpp
+            src/Piece.hpp
+            src/Move.hpp
+            src/Move.cpp
+            src/movegen.cpp
+            src/movegen.hpp
+            src/bitboards.cpp
+            src/bitboards.hpp
+            src/Square.hpp
+            src/utils.hpp
+            src/search.cpp
+            src/search.hpp
+            src/eval.cpp
+            src/eval.hpp
+            src/mcts.cpp
+            src/mcts.hpp
+    )
+elseif(BUILD_MODE STREQUAL "executable")
+    add_executable(chess_cpp src/main.cpp
+            src/Board.cpp
+            src/Board.hpp
+            src/Piece.hpp
+            src/Move.hpp
+            src/Move.cpp
+            src/movegen.cpp
+            src/movegen.hpp
+            src/bitboards.cpp
+            src/bitboards.hpp
+            src/Square.hpp
+            src/utils.hpp
+            src/tests.hpp
+            src/search.cpp
+            src/search.hpp
+            src/eval.cpp
+            src/eval.hpp
+            src/mcts.cpp
+            src/mcts.hpp
+    )
+else()
+    message(FATAL_ERROR "BUILD_MODE is invalid, see CMakeLists.txt for valid options")
+endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "-fconstexpr-steps=10000000")
