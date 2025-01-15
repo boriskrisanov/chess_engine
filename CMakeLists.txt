@@ -3,7 +3,7 @@ project(chess_cpp)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_library(chess_cpp
+add_executable(chess_cpp src/main.cpp
         src/Board.cpp
         src/Board.hpp
         src/Piece.hpp
@@ -15,6 +15,7 @@ add_library(chess_cpp
         src/bitboards.hpp
         src/Square.hpp
         src/utils.hpp
+        src/tests.hpp
         src/search.cpp
         src/search.hpp
         src/eval.cpp
