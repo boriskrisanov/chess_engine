@@ -11,7 +11,7 @@ if (NOT DEFINED BUILD_MODE)
 endif()
 
 if (BUILD_MODE STREQUAL "library")
-    add_executable(chess_cpp
+    add_library(chess_cpp
             src/Board.cpp
             src/Board.hpp
             src/Piece.hpp
