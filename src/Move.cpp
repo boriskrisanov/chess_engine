@@ -95,11 +95,6 @@ MoveFlag Move::moveFlag() const
 
 std::string Move::getPgn(Board boardBeforeMove) const
 {
-    // Board is copied, so no need to make the move again
-    // TODO: This was ported from the old code where the PGN was computed for the whole game at once, so there may be a
-    //  better way to do this without unmaking the move
-    boardBeforeMove.unmakeMove();
-    // Board before move
     Board board = boardBeforeMove;
     std::string moveString;
 
@@ -183,7 +178,7 @@ std::string Move::getPgn(Board boardBeforeMove) const
     {
         moveString.append("x");
     }
-    if (moveFlag() == MoveFlag::ShortCastling || moveFlag() == MoveFlag::LongCastling)
+    if (moveFlag() != MoveFlag::ShortCastling && moveFlag() != MoveFlag::LongCastling)
     {
         moveString.append(square::toString(end()));
     }
