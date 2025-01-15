@@ -6,12 +6,12 @@ set(CMAKE_CXX_STANDARD 23)
 # BUILD_MODE: "executable" - build exe, "library" - build static lib
 
 if (NOT DEFINED BUILD_MODE)
-    message("BUILD_MODE is not defined, building executable by default")
+    message(WARNING "BUILD_MODE is not defined, building executable by default")
     set(BUILD_MODE "executable")
 endif()
 
 if (BUILD_MODE STREQUAL "library")
-    add_executable(library
+    add_executable(chess_cpp
             src/Board.cpp
             src/Board.hpp
             src/Piece.hpp
