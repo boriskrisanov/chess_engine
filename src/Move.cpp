@@ -211,6 +211,8 @@ std::string Move::getPgn(Board boardBeforeMove) const
             break;
         }
     }
+    // Test for check and checkmate, so we need to actually make the move
+    board.makeMove(*this); // Board is copied so this is fine
     if (board.isCheckmate(WHITE) || board.isCheckmate(BLACK))
     {
         moveString.append("#");
@@ -218,6 +220,7 @@ std::string Move::getPgn(Board boardBeforeMove) const
     else if (board.isCheck())
     {
         // Comment from old code, not sure if this is still relevant
+        // Probably not, since this was when the PGN was generated for the whole game at once, but we'll see
         // TODO: Fix + incorrectly being appended at the end of the full move
         moveString.append("+");
     }
