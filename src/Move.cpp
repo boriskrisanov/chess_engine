@@ -100,9 +100,16 @@ std::string Move::getPgn(Board boardBeforeMove) const
 
     Piece movedPiece = board[start()];
 
+    /* This is needed because the move doesn't seem to store the captured piece until the move is made (for performance
+     * reasons?, I've forgotten the architecture at this point). This means that we have to either make the method not
+     * const and then set the captured piece, which I don't want to do, or do this. Neither of these is great, the
+     * better approach would be to improve the architecture, so I'll do that later (TODO).
+     */
+    const Piece capturedPiece_ = board[end()];
+
     if (movedPiece.kind == PieceKind::PAWN)
     {
-        if (capturedPiece.kind != PieceKind::NONE)
+        if (capturedPiece_.kind != PieceKind::NONE)
         {
             // First char of square will be the file
             moveString += square::toString(start())[0];
@@ -174,7 +181,7 @@ std::string Move::getPgn(Board boardBeforeMove) const
             }
         }
     }
-    if (capturedPiece.kind != PieceKind::NONE)
+    if (capturedPiece_.kind != PieceKind::NONE)
     {
         moveString.append("x");
     }
