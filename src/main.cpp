@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include "eval.hpp"
-#include "mcts.hpp"
 #include "search.hpp"
 
 using std::cin, std::cout, std::string;
@@ -101,31 +100,6 @@ int main()
         else if (command == "test")
         {
             runTests();
-        }
-        else if (command == "mcts")
-        {
-            int iterations;
-            cin >> iterations;
-            int mctsIterations;
-            cin >> mctsIterations;
-            const auto [w, b, d] = mctsEval(board, mctsIterations, iterations);
-            cout << "P(W) = " << w << "\n";
-            cout << "P(B) = " << b << "\n";
-            cout << "P(D) = " << d << "\n";
-        }
-        else if (command == "mcts_gen_data")
-        {
-            string file;
-            cin >> file;
-            int iterations;
-            cin >> iterations;
-
-            std::ifstream positionFile;
-            string currentFen;
-            while (std::getline(positionFile, currentFen))
-            {
-
-            }
         }
         else if (command == "quit")
         {
