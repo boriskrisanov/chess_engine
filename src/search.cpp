@@ -41,9 +41,10 @@ struct TT_Entry
     uint64_t hash = 0;
     uint8_t depth = 0;
     int eval = 0;
+    Move bestMoveInPosition;
 
-    TT_Entry(NodeKind kind, uint64_t hash, uint8_t depth, int eval)
-        : kind(kind), hash(hash), depth(depth), eval(eval)
+    TT_Entry(NodeKind kind, uint64_t hash, uint8_t depth, int eval, const Move& bestMoveInPosition)
+        : kind(kind), hash(hash), depth(depth), eval(eval), bestMoveInPosition(bestMoveInPosition)
     {
     }
 
@@ -66,16 +67,18 @@ const TT_Entry* getTransposition(uint64_t hash)
         // Empty node or index collision
         return nullptr;
     }
+    debugStats.ttHits++;
     return value;
 }
 
-void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, int eval)
+void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, int eval, Move bestMove_)
 {
     if (searchState.interruptSearch)
     {
         return;
     }
-    transpositionTable.at(index(hash)) = {kind, hash, depth, eval};
+    debugStats.ttWrites++;
+    transpositionTable.at(index(hash)) = {kind, hash, depth, eval, bestMove_};
 }
 
 int moveScore(const Board& board, const Move& move)
@@ -103,6 +106,12 @@ void orderMoves(Board& board, vector<Move>& moves)
 {
     for (Move& move : moves)
     {
+        const auto ttEntry = getTransposition(board.getHash());
+        if (ttEntry != nullptr && !ttEntry->bestMoveInPosition.isInvalid() && ttEntry->bestMoveInPosition == move)
+        {
+            move.score = std::numeric_limits<int>::max();
+            continue;
+        }
         move.score = moveScore(board, move);
     }
     std::sort(moves.begin(), moves.end(), [](const Move& m1, const Move& m2)
@@ -125,7 +134,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     }
 
     const TT_Entry* ttEntry = getTransposition(board.getHash());
-    if (ttEntry != nullptr && false)
+    if (ttEntry != nullptr)
     {
         if (ttEntry->depth >= depth)
         {
@@ -156,6 +165,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
 
     // Assume that no moves will exceed alpha
     NodeKind nodeKind = NodeKind::UPPER_BOUND;
+    Move bestMove_{0, 0, MoveFlag::None};
 
     for (const Move move : moves)
     {
@@ -175,13 +185,14 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
             // (there is a move the opponent can play to avoid this position, so this move will never be played)
             // This is a lower bound on the true eval because we are exiting the search early and there may be other
             // moves we haven't searched which may be better.
-            storeTransposition(NodeKind::LOWER_BOUND, board.getHash(), depth, beta);
+            // storeTransposition(NodeKind::LOWER_BOUND, board.getHash(), depth, beta);
             return beta;
         }
         if (eval > alpha)
         {
             // This move is better than what we had before, so we will search it fully
             nodeKind = NodeKind::EXACT;
+            bestMove_ = move;
             alpha = eval;
         }
         // If eval <= alpha, we don't need to consider this move because we already have a better or equally good move available
@@ -204,7 +215,10 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
         }
     }
 
-    storeTransposition(nodeKind, board.getHash(), depth, alpha);
+    if (nodeKind == NodeKind::EXACT)
+    {
+        storeTransposition(nodeKind, board.getHash(), depth, alpha, bestMove_);
+    }
     return alpha;
 }
 

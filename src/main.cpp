@@ -13,7 +13,7 @@ int main()
 {
     Board board;
     board.loadFen(STARTING_POSITION_FEN);
-    // board.loadFen("7r/p4k1P/2p2P2/6p1/1n6/1Pp1N1P1/r7/1KBR3R b - - 1 34");
+    board.loadFen("7r/p4k1P/2p2P2/6p1/1n6/1Pp1N1P1/r7/1KBR3R b - - 1 34");
     while (true)
     {
         string command;
@@ -71,6 +71,8 @@ int main()
                 cout << "eval " << searchResult.standardEval() << "\n";
                 cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
                 cout << "positions evaluated: " << debugStats.positionsEvaluated << "\n";
+                cout << "TT writes: " << debugStats.ttWrites << "\n";
+                cout << "TT hits: " << debugStats.ttHits << "\n";
             }
             else if (mode == "time") // Not a standard UCI command
             {
