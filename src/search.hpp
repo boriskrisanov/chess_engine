@@ -16,9 +16,10 @@ struct SearchResult
     PieceColor sideToMove;
     Move bestMove;
     int eval;
+    DebugStats debugStats;
 
-    SearchResult(PieceColor sideToMove, Move bestMove, int eval)
-        : sideToMove(sideToMove), bestMove(bestMove), eval(eval)
+    SearchResult(PieceColor sideToMove, Move bestMove, int eval, DebugStats debugStats)
+        : sideToMove(sideToMove), bestMove(bestMove), eval(eval), debugStats(debugStats)
     {
     }
 

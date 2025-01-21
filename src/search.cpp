@@ -264,7 +264,7 @@ SearchResult bestMove(Board& board, uint8_t depth)
         board.unmakeMove();
     }
 
-    return {board.sideToMove, bestMove, bestEval};
+    return {board.sideToMove, bestMove, bestEval, debugStats};
 }
 
 SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit)
