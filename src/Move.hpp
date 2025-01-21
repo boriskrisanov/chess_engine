@@ -38,7 +38,17 @@ public:
             MoveFlag::PromotionRook || moveFlag() == MoveFlag::PromotionQueen;
     }
 
+    bool isInvalid() const
+    {
+        return moveData == 0;
+    }
+
     explicit operator std::string() const;
+
+    bool operator==(const Move rhs) const
+    {
+        return moveData == rhs.moveData;
+    }
 
 private:
     uint16_t moveData = 0;

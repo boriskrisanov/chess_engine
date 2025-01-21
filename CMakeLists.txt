@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 23)
 if (NOT DEFINED BUILD_MODE)
     message(WARNING "BUILD_MODE is not defined, building executable by default")
     set(BUILD_MODE "executable")
-endif()
+endif ()
 
 if (BUILD_MODE STREQUAL "library")
     add_library(chess_cpp
@@ -27,10 +27,8 @@ if (BUILD_MODE STREQUAL "library")
             src/search.hpp
             src/eval.cpp
             src/eval.hpp
-            src/mcts.cpp
-            src/mcts.hpp
     )
-elseif(BUILD_MODE STREQUAL "executable")
+elseif (BUILD_MODE STREQUAL "executable")
     add_executable(chess_cpp src/main.cpp
             src/Board.cpp
             src/Board.hpp
@@ -48,12 +46,10 @@ elseif(BUILD_MODE STREQUAL "executable")
             src/search.hpp
             src/eval.cpp
             src/eval.hpp
-            src/mcts.cpp
-            src/mcts.hpp
     )
-else()
+else ()
     message(FATAL_ERROR "BUILD_MODE is invalid, see CMakeLists.txt for valid options")
-endif()
+endif ()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "-fconstexpr-steps=10000000")

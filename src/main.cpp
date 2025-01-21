@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include "eval.hpp"
-#include "mcts.hpp"
 #include "search.hpp"
 
 using std::cin, std::cout, std::string;
@@ -14,7 +13,7 @@ int main()
 {
     Board board;
     board.loadFen(STARTING_POSITION_FEN);
-    // board.loadFen("7r/p4k1P/2p2P2/6p1/1n6/1Pp1N1P1/r7/1KBR3R b - - 1 34");
+    board.loadFen("7r/p4k1P/2p2P2/6p1/1n6/1Pp1N1P1/r7/1KBR3R b - - 1 34");
     while (true)
     {
         string command;
@@ -72,6 +71,8 @@ int main()
                 cout << "eval " << searchResult.standardEval() << "\n";
                 cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start) << "\n";
                 cout << "positions evaluated: " << debugStats.positionsEvaluated << "\n";
+                cout << "TT writes: " << debugStats.ttWrites << "\n";
+                cout << "TT hits: " << debugStats.ttHits << "\n";
             }
             else if (mode == "time") // Not a standard UCI command
             {
@@ -101,31 +102,6 @@ int main()
         else if (command == "test")
         {
             runTests();
-        }
-        else if (command == "mcts")
-        {
-            int iterations;
-            cin >> iterations;
-            int mctsIterations;
-            cin >> mctsIterations;
-            const auto [w, b, d] = mctsEval(board, mctsIterations, iterations);
-            cout << "P(W) = " << w << "\n";
-            cout << "P(B) = " << b << "\n";
-            cout << "P(D) = " << d << "\n";
-        }
-        else if (command == "mcts_gen_data")
-        {
-            string file;
-            cin >> file;
-            int iterations;
-            cin >> iterations;
-
-            std::ifstream positionFile;
-            string currentFen;
-            while (std::getline(positionFile, currentFen))
-            {
-
-            }
         }
         else if (command == "quit")
         {

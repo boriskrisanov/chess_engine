@@ -7,6 +7,8 @@
 struct DebugStats
 {
     uint64_t positionsEvaluated = 0;
+    uint64_t ttWrites = 0;
+    uint64_t ttHits = 0;
 };
 
 extern DebugStats debugStats;
