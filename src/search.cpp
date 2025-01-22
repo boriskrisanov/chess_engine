@@ -13,7 +13,7 @@ using std::vector;
 // +1 and -1 to avoid overflow when multiplying by -1
 constexpr int POSITIVE_INFINITY = std::numeric_limits<int>::max() - 1;
 constexpr int NEGATIVE_INFINITY = std::numeric_limits<int>::min() + 1;
-constexpr size_t TRANSPOSITION_TABLE_SIZE_MB = 10;
+constexpr size_t DEFAULT_TRANSPOSITION_TABLE_SIZE_MB = 10;
 
 DebugStats debugStats{};
 
@@ -51,12 +51,19 @@ struct TT_Entry
     TT_Entry() = default;
 };
 
-constexpr size_t TRANSPOSITION_TABLE_ENTRIES = TRANSPOSITION_TABLE_SIZE_MB * 1000 * 1000 / sizeof(TT_Entry);
-vector<TT_Entry> transpositionTable{TRANSPOSITION_TABLE_ENTRIES};
+size_t ttNumEntries = DEFAULT_TRANSPOSITION_TABLE_SIZE_MB * 1000 * 1000 / sizeof(TT_Entry);
+vector<TT_Entry> transpositionTable{ttNumEntries};
+
+void resizeTranspositionTable(size_t sizeMB)
+{
+    ttNumEntries = sizeMB * 1000 * 1000 / sizeof(TT_Entry);
+    transpositionTable.clear();
+    transpositionTable.resize(ttNumEntries);
+}
 
 size_t index(uint64_t hash)
 {
-    return hash % TRANSPOSITION_TABLE_ENTRIES;
+    return hash % ttNumEntries;
 }
 
 const TT_Entry* getTransposition(uint64_t hash)
