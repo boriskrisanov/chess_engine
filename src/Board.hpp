@@ -146,6 +146,11 @@ public:
         return hashHistory.top();
     }
 
+    std::vector<Move> getMoveHistory()
+    {
+        return moveHistory;
+    }
+
     bool isStalemate();
     bool isInsufficientMaterial() const;
     bool isThreefoldRepetition();
