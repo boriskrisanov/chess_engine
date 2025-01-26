@@ -559,18 +559,6 @@ std::vector<Move> Board::getLegalCaptures()
     return captures;
 }
 
-void Board::getPseudoLegalMoves(std::vector<Move>& moves) const
-{
-    for (Square i = 0; i < 64; i++)
-    {
-        const Piece piece = board[i];
-        if (!piece.isNone() && piece.color == sideToMove)
-        {
-            generatePseudoLegalMoves(piece, i, *this, moves);
-        }
-    }
-}
-
 bool Board::isSideInCheckAfterMove(Move move, PieceColor side)
 {
     bool isCheck = false;

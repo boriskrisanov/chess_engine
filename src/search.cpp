@@ -103,7 +103,21 @@ int moveScore(const Board& board, const Move& move)
 
     if (move.isPromotion())
     {
-        score += 500;
+        if (move.moveFlag() == MoveFlag::PromotionQueen)
+        {
+            score += QUEEN_VALUE;
+        } else if (move.moveFlag() == MoveFlag::PromotionRook)
+        {
+            score += ROOK_VALUE;
+        }
+        else if (move.moveFlag() == MoveFlag::PromotionBishop)
+        {
+            score += BISHOP_VALUE;
+        }
+        else if (move.moveFlag() == MoveFlag::PromotionKnight)
+        {
+            score += KNIGHT_VALUE;
+        }
     }
 
     return score;
