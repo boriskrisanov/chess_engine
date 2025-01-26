@@ -192,7 +192,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
             // (there is a move the opponent can play to avoid this position, so this move will never be played)
             // This is a lower bound on the true eval because we are exiting the search early and there may be other
             // moves we haven't searched which may be better.
-            // storeTransposition(NodeKind::LOWER_BOUND, board.getHash(), depth, beta);
+            storeTransposition(NodeKind::LOWER_BOUND, board.getHash(), depth, beta, bestMove_);
             return beta;
         }
         if (eval > alpha)
