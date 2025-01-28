@@ -47,7 +47,6 @@ elseif (BUILD_MODE STREQUAL "executable")
             src/eval.cpp
             src/eval.hpp
             src/MoveFlag.hpp
-            src/precomputedMoveData.hpp
     )
 else ()
     message(FATAL_ERROR "BUILD_MODE is invalid, see CMakeLists.txt for valid options")

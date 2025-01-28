@@ -747,15 +747,169 @@ namespace movegen
         }
     }
 
-    void generatePawnMoves(std::vector<Move>& moves, const Board& board)
+    void generatePawnMoves(std::vector<Move>& moves, Board board, Bitboard checkResolutions)
     {
-        Bitboard pawns = board.bitboards[Piece{PieceKind::PAWN, board.sideToMove}.index()];
-        const int direction = board.sideToMove == WHITE ? -1 : 1;
-        while (pawns != 0)
+        const PieceColor side = board.sideToMove;
+        Bitboard pawns = board.bitboards[Piece{PieceKind::PAWN, side}.index()];
+        const Bitboard emptySquares = ~board.getPieces();
+        const Bitboard enemyPieces = board.getPieces(oppositeColor(side));
+        const int direction = side == WHITE ? 1 : -1;
+
+
+        const Bitboard doublePushTarget = side == WHITE ? bitboards::RANK_4 : bitboards::RANK_5;
+        const Bitboard promotionRank = side == WHITE ? bitboards::RANK_1 : bitboards::RANK_8;
+        Bitboard singlePushes = (side == WHITE ? pawns << 8 : pawns >> 8) & emptySquares;
+        Bitboard doublePushes = (side == WHITE ? singlePushes << 8 : singlePushes >> 8) & emptySquares &
+            doublePushTarget;
+        Bitboard leftCaptures = (side == WHITE
+                                     ? ((pawns & ~bitboards::FILE_A) << 9)
+                                     : ((pawns & ~bitboards::FILE_A) >> 7)) & enemyPieces;
+        Bitboard rightCaptures = (side == WHITE
+                                      ? ((pawns & ~bitboards::FILE_H) << 7)
+                                      : ((pawns & ~bitboards::FILE_H) >> 9)) & enemyPieces;
+
+        Bitboard singlePushesWithPromotion = singlePushes & promotionRank;
+        Bitboard leftCapturesWithPromotion = leftCaptures & promotionRank;
+        Bitboard rightCapturesWithPromotion = rightCaptures & promotionRank;
+
+        singlePushes &= ~promotionRank;
+        leftCaptures &= ~promotionRank;
+        rightCaptures &= ~promotionRank;
+
+        // Pawn pushes
+        while (singlePushes != 0)
         {
-            Square i = bitboards::popMSB(pawns);
-            // Normal moves
-            // if ()
+            Square i = bitboards::popMSB(singlePushes);
+            const Square start = i + 8 * direction;
+            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
+            const Bitboard targetBitboard = bitboards::withSquare(i);
+            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            {
+                moves.emplace_back(start, i, MoveFlag::None);
+            }
+        }
+        while (doublePushes != 0)
+        {
+            Square i = bitboards::popMSB(doublePushes);
+            const Square start = i + 16 * direction;
+            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
+            const Bitboard targetBitboard = bitboards::withSquare(i);
+            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            {
+                moves.emplace_back(start, i, MoveFlag::None);
+            }
+        }
+
+        // Captures
+        while (leftCaptures != 0)
+        {
+            Square i = bitboards::popMSB(leftCaptures);
+            const Square start = i + (side == WHITE ? 9 : 7) * direction;
+            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
+            const Bitboard targetBitboard = bitboards::withSquare(i);
+            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            {
+                moves.emplace_back(start, i, MoveFlag::None);
+            }
+        }
+        while (rightCaptures != 0)
+        {
+            Square i = bitboards::popMSB(rightCaptures);
+            const Square start = i + (side == WHITE ? 7 : 9) * direction;
+            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
+            const Bitboard targetBitboard = bitboards::withSquare(i);
+            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            {
+                moves.emplace_back(start, i, MoveFlag::None);
+            }
+        }
+
+        // Promotion
+        while (singlePushesWithPromotion != 0)
+        {
+            Square i = bitboards::popMSB(singlePushesWithPromotion);
+            const Square start = i + 8 * direction;
+            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
+            const Bitboard targetBitboard = bitboards::withSquare(i);
+            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            {
+                moves.emplace_back(start, i, MoveFlag::PromotionQueen);
+                moves.emplace_back(start, i, MoveFlag::PromotionRook);
+                moves.emplace_back(start, i, MoveFlag::PromotionBishop);
+                moves.emplace_back(start, i, MoveFlag::PromotionKnight);
+            }
+        }
+        while (leftCapturesWithPromotion != 0)
+        {
+            Square i = bitboards::popMSB(leftCapturesWithPromotion);
+            const Square start = i + (side == WHITE ? 9 : 7) * direction;
+            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
+            const Bitboard targetBitboard = bitboards::withSquare(i);
+            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            {
+                moves.emplace_back(start, i, MoveFlag::PromotionQueen);
+                moves.emplace_back(start, i, MoveFlag::PromotionRook);
+                moves.emplace_back(start, i, MoveFlag::PromotionBishop);
+                moves.emplace_back(start, i, MoveFlag::PromotionKnight);
+            }
+        }
+        while (rightCapturesWithPromotion != 0)
+        {
+            Square i = bitboards::popMSB(rightCapturesWithPromotion);
+            const Square start = i + (side == WHITE ? 7 : 9) * direction;
+            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
+            const Bitboard targetBitboard = bitboards::withSquare(i);
+            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            {
+                moves.emplace_back(start, i, MoveFlag::PromotionQueen);
+                moves.emplace_back(start, i, MoveFlag::PromotionRook);
+                moves.emplace_back(start, i, MoveFlag::PromotionBishop);
+                moves.emplace_back(start, i, MoveFlag::PromotionKnight);
+            }
+        }
+
+        // En Passant
+        const Square ep = board.getEnPassantTargetSquare();
+        if (ep != -1)
+        [[unlikely]]
+        {
+            Bitboard enPassantPawns = pawns & (bitboards::withSquare(ep + 9 * direction) | bitboards::withSquare(
+                ep + 7 * direction));
+            while (enPassantPawns != 0)
+            {
+                Square i = bitboards::popMSB(enPassantPawns);
+                if ((bitboards::withSquare(i) & bitboards::FILE_A) != 0
+                    && (bitboards::withSquare(ep) & bitboards::FILE_H) != 0)
+                {
+                    continue;
+                }
+                if ((bitboards::withSquare(i) & bitboards::FILE_H) != 0 &&
+                    (bitboards::withSquare(ep) & bitboards::FILE_A) != 0)
+                {
+                    continue;
+                }
+                /*
+                First, check whether we are in check after en passant because there are edge cases with the pin
+                detection. This is not particularly efficient and there are better ways of doing this, but en passant
+                is rare so there shouldn't be a significant performance impact. (TODO: Improve)
+                */
+                board.makeMove(Move{i, static_cast<Square>(ep), MoveFlag::EnPassant});
+                const bool enPassantPossible = !board.isSideInCheck(side);
+                board.unmakeMove();
+                if (!enPassantPossible)
+                {
+                    break;
+                }
+
+                moves.emplace_back(i, ep, MoveFlag::EnPassant);
+            }
         }
     }
 
@@ -763,11 +917,6 @@ namespace movegen
     {
         vector<Move> moves;
         moves.reserve(255);
-
-
-        generatePawnMoves(moves, board);
-
-        //-----------------
 
         // TODO: Improve architecture and minimise use of globals
         // Computed by checkResolutionSquares()
@@ -779,6 +928,10 @@ namespace movegen
                                               ? checkResolutionSquares(board)
                                               : bitboards::ALL_SQUARES;
         computePinLines(board, sideToMove);
+
+        generatePawnMoves(moves, board, checkResolutions);
+
+        // -------------
 
 
         for (Square pos = 0; pos < 64; pos++)
@@ -895,6 +1048,7 @@ namespace movegen
             {
                 if (piece.kind() == PieceKind::PAWN)
                 {
+                    continue;
                     const int8_t enPassantTargetSquare = board.getEnPassantTargetSquare();
 
                     // Captures
