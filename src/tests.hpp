@@ -59,7 +59,7 @@ inline size_t runPerft(uint8_t depth, std::string fen, std::string moveSequence)
 
     std::map<std::string, size_t> moveCounts;
     auto start = std::chrono::system_clock::now();
-    size_t total = perft(board, depth, moveCounts);
+    size_t total = perft(board, depth, moveCounts); // crash
     auto end = std::chrono::system_clock::now();
     for (const auto& [key, value] : moveCounts)
     {

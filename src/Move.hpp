@@ -1,22 +1,12 @@
 #pragma once
 
-#include "Piece.hpp"
 #include "Square.hpp"
 #include <cstdint>
 
-class Board;
+#include "Piece.hpp"
+#include "MoveFlag.hpp"
 
-enum class MoveFlag : uint8_t
-{
-    None,
-    EnPassant,
-    ShortCastling,
-    LongCastling,
-    PromotionKnight,
-    PromotionBishop,
-    PromotionRook,
-    PromotionQueen
-};
+class Board;
 
 class Move
 {

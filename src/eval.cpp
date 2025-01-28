@@ -76,19 +76,20 @@ uint16_t pieceValue(PieceKind kind)
 
 int materialImbalance(const Board& board)
 {
+    using namespace pieceIndexes;
     int eval = 0;
 
-    eval += std::popcount(board.whitePawns) * PAWN_VALUE;
-    eval += std::popcount(board.whiteKnights) * KNIGHT_VALUE;
-    eval += std::popcount(board.whiteBishops) * BISHOP_VALUE;
-    eval += std::popcount(board.whiteRooks) * ROOK_VALUE;
-    eval += std::popcount(board.whiteQueens) * QUEEN_VALUE;
+    eval += std::popcount(board.bitboards[WHITE_PAWN]) * PAWN_VALUE;
+    eval += std::popcount(board.bitboards[WHITE_KNIGHT]) * KNIGHT_VALUE;
+    eval += std::popcount(board.bitboards[WHITE_BISHOP]) * BISHOP_VALUE;
+    eval += std::popcount(board.bitboards[WHITE_ROOK]) * ROOK_VALUE;
+    eval += std::popcount(board.bitboards[WHITE_QUEEN]) * QUEEN_VALUE;
 
-    eval -= std::popcount(board.blackPawns) * PAWN_VALUE;
-    eval -= std::popcount(board.blackKnights) * KNIGHT_VALUE;
-    eval -= std::popcount(board.blackBishops) * BISHOP_VALUE;
-    eval -= std::popcount(board.blackRooks) * ROOK_VALUE;
-    eval -= std::popcount(board.blackQueens) * QUEEN_VALUE;
+    eval -= std::popcount(board.bitboards[BLACK_PAWN]) * PAWN_VALUE;
+    eval -= std::popcount(board.bitboards[BLACK_KNIGHT]) * KNIGHT_VALUE;
+    eval -= std::popcount(board.bitboards[BLACK_BISHOP]) * BISHOP_VALUE;
+    eval -= std::popcount(board.bitboards[BLACK_ROOK]) * ROOK_VALUE;
+    eval -= std::popcount(board.bitboards[BLACK_QUEEN]) * QUEEN_VALUE;
 
     return eval;
 }
@@ -99,17 +100,17 @@ int openingSquareWeights(const Board& board)
 
     for (int i = 0; i < 64; i++)
     {
-        if (board[i].kind == PieceKind::PAWN)
+        if (board[i].kind() == PieceKind::PAWN)
         {
-            eval += board[i].color == WHITE ? whitePawnOpeningWeights[i] : blackPawnOpeningWeights[i];
+            eval += board[i].color() == PieceColor::WHITE ? whitePawnOpeningWeights[i] : blackPawnOpeningWeights[i];
         }
-        else if (board[i].kind == PieceKind::KNIGHT)
+        else if (board[i].kind() == PieceKind::KNIGHT)
         {
-            eval += board[i].color == WHITE ? whiteKnightOpeningWeights[i] : blackKnightOpeningWeights[i];
+            eval += board[i].color() == PieceColor::WHITE ? whiteKnightOpeningWeights[i] : blackKnightOpeningWeights[i];
         }
-        else if (board[i].kind == PieceKind::KING)
+        else if (board[i].kind() == PieceKind::KING)
         {
-            eval += board[i].color == WHITE ? whiteKingOpeningWeights[i] : blackKingOpeningWeights[i];
+            eval += board[i].color() == PieceColor::WHITE ? whiteKingOpeningWeights[i] : blackKingOpeningWeights[i];
         }
     }
 
@@ -119,20 +120,20 @@ int openingSquareWeights(const Board& board)
 double openingWeight(const Board& board)
 {
     // This isn't very accurate, but it should be fine for now (ported from Java version)
-
+    using namespace pieceIndexes;
     double totalMaterial = 0;
 
-    totalMaterial += std::popcount(board.whitePawns) * PAWN_VALUE;
-    totalMaterial += std::popcount(board.whiteKnights) * KNIGHT_VALUE;
-    totalMaterial += std::popcount(board.whiteBishops) * BISHOP_VALUE;
-    totalMaterial += std::popcount(board.whiteRooks) * ROOK_VALUE;
-    totalMaterial += std::popcount(board.whiteQueens) * QUEEN_VALUE;
+    totalMaterial += std::popcount(board.bitboards[WHITE_PAWN]) * PAWN_VALUE;
+    totalMaterial += std::popcount(board.bitboards[WHITE_KNIGHT]) * KNIGHT_VALUE;
+    totalMaterial += std::popcount(board.bitboards[WHITE_BISHOP]) * BISHOP_VALUE;
+    totalMaterial += std::popcount(board.bitboards[WHITE_ROOK]) * ROOK_VALUE;
+    totalMaterial += std::popcount(board.bitboards[WHITE_QUEEN]) * QUEEN_VALUE;
 
-    totalMaterial += std::popcount(board.blackPawns) * PAWN_VALUE;
-    totalMaterial += std::popcount(board.blackKnights) * KNIGHT_VALUE;
-    totalMaterial += std::popcount(board.blackBishops) * BISHOP_VALUE;
-    totalMaterial += std::popcount(board.blackRooks) * ROOK_VALUE;
-    totalMaterial += std::popcount(board.blackQueens) * QUEEN_VALUE;
+    totalMaterial -= std::popcount(board.bitboards[BLACK_PAWN]) * PAWN_VALUE;
+    totalMaterial -= std::popcount(board.bitboards[BLACK_KNIGHT]) * KNIGHT_VALUE;
+    totalMaterial -= std::popcount(board.bitboards[BLACK_BISHOP]) * BISHOP_VALUE;
+    totalMaterial -= std::popcount(board.bitboards[BLACK_ROOK]) * ROOK_VALUE;
+    totalMaterial -= std::popcount(board.bitboards[BLACK_QUEEN]) * QUEEN_VALUE;
 
     return std::max((totalMaterial / 1024) - 2, 0.0);
 }
@@ -144,7 +145,7 @@ int staticEval(const Board& board)
     eval += materialImbalance(board);
     eval += std::floor(static_cast<double>(openingSquareWeights(board)) * openingWeight(board));
 
-    return eval * (board.sideToMove == WHITE ? 1 : -1);
+    return eval * (board.sideToMove == PieceColor::WHITE ? 1 : -1);
 }
 
 void printDebugEval(const Board& board)
@@ -152,5 +153,5 @@ void printDebugEval(const Board& board)
     std::cout << "Opening weight: " << openingWeight(board) << "\n";
     std::cout << "Opening piece square table eval: " << openingSquareWeights(board) << "\n";
     std::cout << "Material imbalance: " << materialImbalance(board) << "\n";
-    std::cout << "Final eval: " << staticEval(board) * (board.sideToMove == WHITE ? 1 : -1) << "\n";
+    std::cout << "Final eval: " << staticEval(board) * (board.sideToMove == PieceColor::WHITE ? 1 : -1) << "\n";
 }

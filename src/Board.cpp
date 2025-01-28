@@ -8,6 +8,9 @@
 
 using std::string;
 
+using enum PieceKind;
+using enum PieceColor;
+
 void Board::loadFen(string fen)
 {
     hashHistory = {};
@@ -16,18 +19,11 @@ void Board::loadFen(string fen)
         board[i] = Piece{};
     }
     // Reset bitboards
-    whitePawns = 0;
-    whiteKnights = 0;
-    whiteBishops = 0;
-    whiteRooks = 0;
-    whiteQueens = 0;
-    whiteKing = 0;
-    blackPawns = 0;
-    blackKnights = 0;
-    blackBishops = 0;
-    blackRooks = 0;
-    blackQueens = 0;
-    blackKing = 0;
+    bitboards = {};
+    for (Bitboard& bitboard : bitboards)
+    {
+        bitboard = 0;
+    }
 
     // TODO: Allow FEN strings with only some information
     //  (Only placement info is needed, everything else can be set to default)
@@ -179,7 +175,7 @@ void Board::makeMove(Move move)
         capturedPiece = board[sideToMove == WHITE ? move.end() + 8 : move.end() - 8];
     }
 
-    if (movedPiece.kind == PieceKind::KING)
+    if (movedPiece.kind() == PieceKind::KING)
     {
         if (sideToMove == WHITE)
         {
@@ -194,7 +190,7 @@ void Board::makeMove(Move move)
     move.capturedPiece = capturedPiece;
     moveHistory.push_back(move);
 
-    if (capturedPiece.isNone() && movedPiece.kind != PieceKind::PAWN)
+    if (capturedPiece.isNone() && movedPiece.kind() != PieceKind::PAWN)
     {
         halfMoveClock++;
     }
@@ -208,7 +204,7 @@ void Board::makeMove(Move move)
     // The right to capture en passant has been lost because another move has been made
     enPassantTargetSquare = -1;
 
-    if (movedPiece.kind == PieceKind::PAWN)
+    if (movedPiece.kind() == PieceKind::PAWN)
     {
         // Set the en passant target square if a pawn moved 2 squares forward
         if (move.end() == move.start() - 8 * 2)
@@ -222,7 +218,7 @@ void Board::makeMove(Move move)
     }
 
     // Update king position and castling
-    if (movedPiece.kind == PieceKind::KING)
+    if (movedPiece.kind() == PieceKind::KING)
     {
         // Castling
         if (move.moveFlag() == MoveFlag::ShortCastling || move.moveFlag() == MoveFlag::LongCastling)
@@ -230,7 +226,7 @@ void Board::makeMove(Move move)
             // Move rook
             if (move.moveFlag() == MoveFlag::ShortCastling)
             {
-                const Square rookPosition = movedPiece.color == WHITE ? 63 : 7;
+                const Square rookPosition = movedPiece.color() == WHITE ? 63 : 7;
                 Piece rook = board[rookPosition];
                 board[rookPosition] = Piece{};
                 board[move.end() - 1] = rook;
@@ -238,7 +234,7 @@ void Board::makeMove(Move move)
             }
             else if (move.moveFlag() == MoveFlag::LongCastling)
             {
-                const Square rookPosition = movedPiece.color == WHITE ? 56 : 0;
+                const Square rookPosition = movedPiece.color() == WHITE ? 56 : 0;
                 Piece rook = board[rookPosition];
                 board[rookPosition] = Piece{};
                 board[move.end() + 1] = rook;
@@ -247,7 +243,7 @@ void Board::makeMove(Move move)
         }
 
         // King has moved so castling is no longer possible
-        if (movedPiece.color == WHITE)
+        if (movedPiece.color() == WHITE)
         {
             whiteCanShortCastle = false;
             whiteCanLongCastle = false;
@@ -260,7 +256,7 @@ void Board::makeMove(Move move)
     }
 
     // Update castling rights if rook has moved
-    if (movedPiece.kind == PieceKind::ROOK)
+    if (movedPiece.kind() == PieceKind::ROOK)
     {
         if (move.start() == 0)
         {
@@ -280,7 +276,7 @@ void Board::makeMove(Move move)
         }
     }
     // Rook was captured
-    if (capturedPiece.kind == PieceKind::ROOK)
+    if (capturedPiece.kind() == PieceKind::ROOK)
     {
         if (move.end() == 0)
         {
@@ -304,12 +300,12 @@ void Board::makeMove(Move move)
     {
         if (sideToMove == WHITE)
         {
-            blackPawns &= ~bitboards::withSquare(move.end() + 8);
+            bitboards[pieceIndexes::BLACK_PAWN] &= ~bitboards::withSquare(move.end() + 8);
             board[move.end() + 8] = Piece{};
         }
         else
         {
-            whitePawns &= ~bitboards::withSquare(move.end() - 8);
+            bitboards[pieceIndexes::WHITE_PAWN] &= ~bitboards::withSquare(move.end() - 8);
             board[move.end() - 8] = Piece{};
         }
     }
@@ -326,11 +322,11 @@ void Board::makeMove(Move move)
     {
         if (sideToMove == WHITE)
         {
-            whitePawns &= ~bitboards::withSquare(move.start());
+            bitboards[pieceIndexes::WHITE_PAWN] &= ~bitboards::withSquare(move.start());
         }
         else
         {
-            blackPawns &= ~bitboards::withSquare(move.start());
+            bitboards[pieceIndexes::BLACK_PAWN] &= ~bitboards::withSquare(move.start());
         }
         switch (move.moveFlag())
         {
@@ -352,7 +348,7 @@ void Board::makeMove(Move move)
 
         addPiece(move.moveFlag(), sideToMove, move.end());
         // Remove captured piece from bitboards
-        if (capturedPiece.kind != PieceKind::NONE)
+        if (!capturedPiece.isNone())
         {
             removePiece(capturedPiece, move.end());
         }
@@ -378,21 +374,21 @@ void Board::makeMove(std::string uciMove)
 
     MoveFlag moveFlag = MoveFlag::None;
 
-    if (board[start].kind == PieceKind::KING)
+    if (board[start].kind() == PieceKind::KING)
     {
-        if (board[start].color == BLACK && destination == 6 && blackCanShortCastle)
+        if (board[start].color() == BLACK && destination == 6 && blackCanShortCastle)
         {
             moveFlag = MoveFlag::ShortCastling;
         }
-        else if (board[start].color == BLACK && destination == 1 && blackCanLongCastle)
+        else if (board[start].color() == BLACK && destination == 1 && blackCanLongCastle)
         {
             moveFlag = MoveFlag::LongCastling;
         }
-        else if (board[start].color == WHITE && destination == 62 && whiteCanShortCastle)
+        else if (board[start].color() == WHITE && destination == 62 && whiteCanShortCastle)
         {
             moveFlag = MoveFlag::ShortCastling;
         }
-        else if (board[start].color == WHITE && destination == 58 && whiteCanLongCastle)
+        else if (board[start].color() == WHITE && destination == 58 && whiteCanLongCastle)
         {
             moveFlag = MoveFlag::LongCastling;
         }
@@ -447,9 +443,9 @@ void Board::unmakeMove()
                                  ? Piece{PieceKind::PAWN, oppositeColor(sideToMove)}
                                  : board[move.end()];
 
-    if (movedPiece.kind == PieceKind::KING)
+    if (movedPiece.kind() == PieceKind::KING)
     {
-        if (movedPiece.color == WHITE)
+        if (movedPiece.color() == WHITE)
         {
             whiteKingPosition = move.start();
         }
@@ -462,7 +458,7 @@ void Board::unmakeMove()
     // Undo castling
     if (move.moveFlag() == MoveFlag::ShortCastling)
     {
-        if (movedPiece.color == WHITE)
+        if (movedPiece.color() == WHITE)
         {
             Piece rook = board[61];
             board[61] = Piece{};
@@ -479,7 +475,7 @@ void Board::unmakeMove()
     }
     else if (move.moveFlag() == MoveFlag::LongCastling)
     {
-        if (movedPiece.color == WHITE)
+        if (movedPiece.color() == WHITE)
         {
             Piece rook = board[59];
             board[59] = Piece{};
@@ -502,7 +498,7 @@ void Board::unmakeMove()
 
     if (move.isPromotion())
     {
-        removePiece(move.moveFlag(), movedPiece.color, move.end());
+        removePiece(move.moveFlag(), movedPiece.color(), move.end());
     }
 
     if (isCapture)
@@ -516,14 +512,14 @@ void Board::unmakeMove()
                 // Black is the side that made the move
                 // If the move is an en passant capture, the captured piece must be a pawn
                 board[move.end() - 8] = Piece{PieceKind::PAWN, WHITE};
-                whitePawns |= bitboards::withSquare(move.end() - 8);
+                bitboards[pieceIndexes::WHITE_PAWN] |= bitboards::withSquare(move.end() - 8);
             }
             else
             {
                 // White is the side that made the move
                 // If the move is an en passant capture, the captured piece must be a pawn
                 board[move.end() + 8] = Piece{PieceKind::PAWN, BLACK};
-                blackPawns |= bitboards::withSquare(move.end() + 8);
+                bitboards[pieceIndexes::BLACK_PAWN] |= bitboards::withSquare(move.end() + 8);
             }
         }
         else
@@ -541,7 +537,7 @@ void Board::unmakeMove()
 
 std::vector<Move> Board::getLegalMoves()
 {
-    return generateLegalMoves(*this);
+    return movegen::generateLegalMoves(*this);
 }
 
 std::vector<Move> Board::getLegalCaptures()
@@ -549,7 +545,7 @@ std::vector<Move> Board::getLegalCaptures()
     std::vector<Move> captures{};
     // Completely arbitrary, it's probably better to over-allocate than reallocating multiple times
     captures.reserve(10);
-    for (Move move : generateLegalMoves(*this))
+    for (Move move : movegen::generateLegalMoves(*this))
     {
         if (!board[move.end()].isNone() || move.moveFlag() == MoveFlag::EnPassant)
         {
@@ -572,7 +568,7 @@ bool Board::isSideInCheckAfterMove(Move move, PieceColor side)
 
 bool Board::isPseudoLegalMoveLegal(Move move)
 {
-    return !isSideInCheckAfterMove(move, board[move.start()].color);
+    return !isSideInCheckAfterMove(move, board[move.start()].color());
 }
 
 string Board::toString() const
@@ -622,8 +618,8 @@ std::string Board::uciMoveHistory() const
 Bitboard Board::getSlidingPieces(PieceColor side) const
 {
     return side == WHITE
-               ? whiteBishops | whiteRooks | whiteQueens
-               : blackBishops | blackRooks | blackQueens;
+               ? bitboards[pieceIndexes::WHITE_BISHOP] | bitboards[pieceIndexes::WHITE_ROOK] | bitboards[pieceIndexes::WHITE_QUEEN]
+               : bitboards[pieceIndexes::BLACK_BISHOP] | bitboards[pieceIndexes::BLACK_ROOK] | bitboards[pieceIndexes::BLACK_QUEEN];
 }
 
 bool Board::isStalemate()
@@ -634,18 +630,19 @@ bool Board::isStalemate()
 bool Board::isInsufficientMaterial() const
 {
     // TODO: Improve insufficient material detection
+    using namespace pieceIndexes;
 
-    const int whitePawnCount = std::popcount(whitePawns);
-    const int whiteKnightCount = std::popcount(whiteKnights);
-    const int whiteBishopCount = std::popcount(whiteBishops);
-    const int whiteRookCount = std::popcount(whiteRooks);
-    const int whiteQueenCount = std::popcount(whiteQueens);
+    const int whitePawnCount = std::popcount(bitboards[WHITE_PAWN]);
+    const int whiteKnightCount = std::popcount(bitboards[WHITE_KNIGHT]);
+    const int whiteBishopCount = std::popcount(bitboards[WHITE_BISHOP]);
+    const int whiteRookCount = std::popcount(bitboards[WHITE_ROOK]);
+    const int whiteQueenCount = std::popcount(bitboards[WHITE_QUEEN]);
 
-    const int blackPawnCount = std::popcount(blackPawns);
-    const int blackKnightCount = std::popcount(blackKnights);
-    const int blackBishopCount = std::popcount(blackBishops);
-    const int blackRookCount = std::popcount(blackRooks);
-    const int blackQueenCount = std::popcount(blackQueens);
+    const int blackPawnCount = std::popcount(bitboards[BLACK_PAWN]);
+    const int blackKnightCount = std::popcount(bitboards[BLACK_KNIGHT]);
+    const int blackBishopCount = std::popcount(bitboards[BLACK_BISHOP]);
+    const int blackRookCount = std::popcount(bitboards[BLACK_ROOK]);
+    const int blackQueenCount = std::popcount(bitboards[BLACK_QUEEN]);
 
     if (whiteQueenCount > 0 || blackQueenCount > 0 || whiteRookCount > 0 || blackRookCount > 0 || whitePawnCount > 0 ||
         blackPawnCount > 0)
@@ -679,39 +676,25 @@ bool Board::isDraw()
 
 void Board::updateAttackingSquares()
 {
+    using namespace pieceIndexes;
     whiteAttackingSquares = 0;
     blackAttackingSquares = 0;
-    whitePawnAttackingSquares = 0;
-    blackPawnAttackingSquares = 0;
+    whitePawnAttackingSquares = movegen::getPawnAttackingSquares(bitboards[WHITE_PAWN], WHITE);
+    blackPawnAttackingSquares = movegen::getPawnAttackingSquares(bitboards[BLACK_PAWN], BLACK);
 
-    for (Square i = 0; i < 64; i++)
-    {
-        const Piece piece = board[i];
+    whiteAttackingSquares |= whitePawnAttackingSquares;
+    whiteAttackingSquares |= movegen::getPieceAttackingSquares<KNIGHT>(getPieces(), bitboards[WHITE_KNIGHT]);
+    whiteAttackingSquares |= movegen::getPieceAttackingSquares<BISHOP>(getPieces(), bitboards[WHITE_BISHOP]);
+    whiteAttackingSquares |= movegen::getPieceAttackingSquares<ROOK>(getPieces(), bitboards[WHITE_ROOK]);
+    whiteAttackingSquares |= movegen::getPieceAttackingSquares<QUEEN>(getPieces(), bitboards[WHITE_QUEEN]);
+    whiteAttackingSquares |= movegen::getPieceAttackingSquares<KING>(getPieces(), bitboards[WHITE_KING]);
 
-        if (piece.isNone())
-        {
-            continue;
-        }
-
-        const Bitboard attackingSquares = generateAttackingSquares(piece, i, *this);
-
-        if (piece.color == WHITE)
-        {
-            whiteAttackingSquares |= attackingSquares;
-            if (piece.kind == PieceKind::PAWN)
-            {
-                whitePawnAttackingSquares |= attackingSquares;
-            }
-        }
-        else
-        {
-            blackAttackingSquares |= attackingSquares;
-            if (piece.kind == PieceKind::PAWN)
-            {
-                blackPawnAttackingSquares |= attackingSquares;
-            }
-        }
-    }
+    blackAttackingSquares |= blackPawnAttackingSquares;
+    blackAttackingSquares |= movegen::getPieceAttackingSquares<KNIGHT>(getPieces(), bitboards[BLACK_KNIGHT]);
+    blackAttackingSquares |= movegen::getPieceAttackingSquares<BISHOP>(getPieces(), bitboards[BLACK_BISHOP]);
+    blackAttackingSquares |= movegen::getPieceAttackingSquares<ROOK>(getPieces(), bitboards[BLACK_ROOK]);
+    blackAttackingSquares |= movegen::getPieceAttackingSquares<QUEEN>(getPieces(), bitboards[BLACK_QUEEN]);
+    blackAttackingSquares |= movegen::getPieceAttackingSquares<KING>(getPieces(), bitboards[BLACK_KING]);
 }
 
 std::array<uint64_t, 12 * 64 + 1 + 4 + 8> generateRandomValues()
@@ -732,10 +715,9 @@ const std::array<uint64_t, 12 * 64 + 1 + 4 + 8> randomValues = generateRandomVal
 
 uint64_t randomValueForPiece(Piece piece, Square position)
 {
-    // Subtract 1 because this should start at 0 and pieces start at 1 (0 is PieceKind::NONE)
-    uint8_t pieceIndex = static_cast<uint8_t>(piece.kind) - 1;
+    uint8_t pieceIndex = static_cast<uint8_t>(piece.kind());
 
-    if (piece.color == BLACK)
+    if (piece.color() == BLACK)
     {
         pieceIndex += 6;
     }
@@ -796,7 +778,7 @@ uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece,
     // Add piece to new square
     currentHash ^= randomValueForPiece(movingPiece, move.end());
     // Remove captured piece
-    if (capturedPiece.kind != PieceKind::NONE)
+    if (!capturedPiece.isNone())
     {
         // TODO: En passant
         currentHash ^= randomValueForPiece(capturedPiece, move.end());
@@ -805,19 +787,19 @@ uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece,
     // Side to move has changed
     currentHash ^= randomValues[(11 * 64) + 63 + 1];
 
-    if (move.moveFlag() == MoveFlag::ShortCastling && movingPiece.color == WHITE)
+    if (move.moveFlag() == MoveFlag::ShortCastling && movingPiece.color() == WHITE)
     {
         currentHash ^= randomValues[(11 * 64) + 63 + 2];
     }
-    if (move.moveFlag() == MoveFlag::LongCastling && movingPiece.color == WHITE)
+    if (move.moveFlag() == MoveFlag::LongCastling && movingPiece.color() == WHITE)
     {
         currentHash ^= randomValues[(11 * 64) + 63 + 3];
     }
-    if (move.moveFlag() == MoveFlag::ShortCastling && movingPiece.color == BLACK)
+    if (move.moveFlag() == MoveFlag::ShortCastling && movingPiece.color() == BLACK)
     {
         currentHash ^= randomValues[(11 * 64) + 63 + 4];
     }
-    if (move.moveFlag() == MoveFlag::LongCastling && movingPiece.color == BLACK)
+    if (move.moveFlag() == MoveFlag::LongCastling && movingPiece.color() == BLACK)
     {
         currentHash ^= randomValues[(11 * 64) + 63 + 5];
     }
@@ -833,321 +815,31 @@ uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece,
 void Board::movePiece(Piece piece, Piece capturedPiece, Square start, Square end)
 {
     // Remove captured piece
-    switch (capturedPiece.kind)
+    if (!capturedPiece.isNone())
     {
-    case PieceKind::NONE:
-        break;
-    case PieceKind::PAWN:
-        if (capturedPiece.color == WHITE)
-        {
-            whitePawns &= ~bitboards::withSquare(end);
-        }
-        else
-        {
-            blackPawns &= ~bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::KNIGHT:
-        if (capturedPiece.color == WHITE)
-        {
-            whiteKnights &= ~bitboards::withSquare(end);
-        }
-        else
-        {
-            blackKnights &= ~bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::BISHOP:
-        if (capturedPiece.color == WHITE)
-        {
-            whiteBishops &= ~bitboards::withSquare(end);
-        }
-        else
-        {
-            blackBishops &= ~bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::ROOK:
-        if (capturedPiece.color == WHITE)
-        {
-            whiteRooks &= ~bitboards::withSquare(end);
-        }
-        else
-        {
-            blackRooks &= ~bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::QUEEN:
-        if (capturedPiece.color == WHITE)
-        {
-            whiteQueens &= ~bitboards::withSquare(end);
-        }
-        else
-        {
-            blackQueens &= ~bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::KING:
-        break;
+        bitboards[capturedPiece.index()] &= ~bitboards::withSquare(end);
     }
-
     // Move piece
-
-    switch (piece.kind)
-    {
-    case PieceKind::NONE:
-        break;
-    case PieceKind::PAWN:
-        if (piece.color == WHITE)
-        {
-            whitePawns &= ~(bitboards::withSquare(start));
-            whitePawns |= bitboards::withSquare(end);
-        }
-        else
-        {
-            blackPawns &= ~(bitboards::withSquare(start));
-            blackPawns |= bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::KNIGHT:
-        if (piece.color == WHITE)
-        {
-            whiteKnights &= ~(bitboards::withSquare(start));
-            whiteKnights |= bitboards::withSquare(end);
-        }
-        else
-        {
-            blackKnights &= ~(bitboards::withSquare(start));
-            blackKnights |= bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::BISHOP:
-        if (piece.color == WHITE)
-        {
-            whiteBishops &= ~(bitboards::withSquare(start));
-            whiteBishops |= bitboards::withSquare(end);
-        }
-        else
-        {
-            blackBishops &= ~(bitboards::withSquare(start));
-            blackBishops |= bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::ROOK:
-        if (piece.color == WHITE)
-        {
-            whiteRooks &= ~(bitboards::withSquare(start));
-            whiteRooks |= bitboards::withSquare(end);
-        }
-        else
-        {
-            blackRooks &= ~(bitboards::withSquare(start));
-            blackRooks |= bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::QUEEN:
-        if (piece.color == WHITE)
-        {
-            whiteQueens &= ~(bitboards::withSquare(start));
-            whiteQueens |= bitboards::withSquare(end);
-        }
-        else
-        {
-            blackQueens &= ~(bitboards::withSquare(start));
-            blackQueens |= bitboards::withSquare(end);
-        }
-        break;
-    case PieceKind::KING:
-        if (piece.color == WHITE)
-        {
-            whiteKing &= ~(bitboards::withSquare(start));
-            whiteKing |= bitboards::withSquare(end);
-        }
-        else
-        {
-            blackKing &= ~(bitboards::withSquare(start));
-            blackKing |= bitboards::withSquare(end);
-        }
-        break;
-    }
+    bitboards[piece.index()] &= ~bitboards::withSquare(start);
+    bitboards[piece.index()] |= bitboards::withSquare(end);
 }
 
 void Board::addPiece(Piece piece, Square position)
 {
-    if (piece.color == WHITE)
-    {
-        switch (piece.kind)
-        {
-        case PieceKind::PAWN:
-            whitePawns |= bitboards::withSquare(position);
-            break;
-        case PieceKind::KNIGHT:
-            whiteKnights |= bitboards::withSquare(position);
-            break;
-        case PieceKind::BISHOP:
-            whiteBishops |= bitboards::withSquare(position);
-            break;
-        case PieceKind::ROOK:
-            whiteRooks |= bitboards::withSquare(position);
-            break;
-        case PieceKind::QUEEN:
-            whiteQueens |= bitboards::withSquare(position);
-            break;
-        case PieceKind::KING:
-            whiteKing |= bitboards::withSquare(position);
-            break;
-        default:
-            break;
-        }
-    }
-    else
-    {
-        switch (piece.kind)
-        {
-        case PieceKind::PAWN:
-            blackPawns |= bitboards::withSquare(position);
-            break;
-        case PieceKind::KNIGHT:
-            blackKnights |= bitboards::withSquare(position);
-            break;
-        case PieceKind::BISHOP:
-            blackBishops |= bitboards::withSquare(position);
-            break;
-        case PieceKind::ROOK:
-            blackRooks |= bitboards::withSquare(position);
-            break;
-        case PieceKind::QUEEN:
-            blackQueens |= bitboards::withSquare(position);
-            break;
-        case PieceKind::KING:
-            blackKing |= bitboards::withSquare(position);
-            break;
-        default:
-            break;
-        }
-    }
+    bitboards[piece.index()] |= bitboards::withSquare(position);
 }
-
 
 void Board::addPiece(MoveFlag promotedPiece, PieceColor side, Square position)
 {
-    if (side == WHITE)
-    {
-        switch (promotedPiece)
-        {
-        case MoveFlag::PromotionKnight:
-            whiteKnights |= bitboards::withSquare(position);
-            break;
-        case MoveFlag::PromotionBishop:
-            whiteBishops |= bitboards::withSquare(position);
-            break;
-        case MoveFlag::PromotionRook:
-            whiteRooks |= bitboards::withSquare(position);
-            break;
-        case MoveFlag::PromotionQueen:
-            whiteQueens |= bitboards::withSquare(position);
-            break;
-        default:
-            break;
-        }
-    }
-    else
-    {
-        switch (promotedPiece)
-        {
-        case MoveFlag::PromotionKnight:
-            blackKnights |= bitboards::withSquare(position);
-            break;
-        case MoveFlag::PromotionBishop:
-            blackBishops |= bitboards::withSquare(position);
-            break;
-        case MoveFlag::PromotionRook:
-            blackRooks |= bitboards::withSquare(position);
-            break;
-        case MoveFlag::PromotionQueen:
-            blackQueens |= bitboards::withSquare(position);
-            break;
-        default:
-            break;
-        }
-    }
+    bitboards[Piece{promotedPiece, side}.index()] |= bitboards::withSquare(position);
 }
 
 void Board::removePiece(Piece piece, Square position)
 {
-    if (piece.color == WHITE)
-    {
-        switch (piece.kind)
-        {
-        case PieceKind::PAWN:
-            whitePawns &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::KNIGHT:
-            whiteKnights &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::BISHOP:
-            whiteBishops &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::ROOK:
-            whiteRooks &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::QUEEN:
-            whiteQueens &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::KING:
-            whiteKing &= ~bitboards::withSquare(position);
-            break;
-        default:
-            break;
-        }
-    }
-    else
-    {
-        switch (piece.kind)
-        {
-        case PieceKind::PAWN:
-            blackPawns &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::KNIGHT:
-            blackKnights &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::BISHOP:
-            blackBishops &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::ROOK:
-            blackRooks &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::QUEEN:
-            blackQueens &= ~bitboards::withSquare(position);
-            break;
-        case PieceKind::KING:
-            blackKing &= ~bitboards::withSquare(position);
-            break;
-        default:
-            break;
-        }
-    }
+    bitboards[piece.index()] &= ~bitboards::withSquare(position);
 }
 
 void Board::removePiece(MoveFlag promotedPiece, PieceColor side, Square position)
 {
-    PieceKind pieceKind;
-    switch (promotedPiece)
-    {
-    case MoveFlag::PromotionKnight:
-        pieceKind = PieceKind::KNIGHT;
-        break;
-    case MoveFlag::PromotionBishop:
-        pieceKind = PieceKind::BISHOP;
-        break;
-    case MoveFlag::PromotionRook:
-        pieceKind = PieceKind::ROOK;
-        break;
-    case MoveFlag::PromotionQueen:
-        pieceKind = PieceKind::QUEEN;
-        break;
-    default:
-        return;
-    }
-    removePiece(Piece{pieceKind, side}, position);
+    bitboards[Piece{promotedPiece, side}.index()] &= ~bitboards::withSquare(position);
 }

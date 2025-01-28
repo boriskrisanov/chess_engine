@@ -9,9 +9,6 @@
 
 const std::string STARTING_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-using PieceColor::WHITE;
-using PieceColor::BLACK;
-
 struct BoardState
 {
     int8_t enPassantTargetSquare;
@@ -29,6 +26,7 @@ struct BoardState
 class Board
 {
 public:
+    std::array<Bitboard, 14> bitboards{};
     void loadFen(std::string fen);
     std::string getFen() const;
     std::string getPgn();
@@ -45,20 +43,7 @@ public:
     Bitboard getSlidingPieces(PieceColor side) const;
     bool isDraw();
 
-    Bitboard whitePawns = 0;
-    Bitboard whiteKnights = 0;
-    Bitboard whiteBishops = 0;
-    Bitboard whiteRooks = 0;
-    Bitboard whiteQueens = 0;
-    Bitboard whiteKing = 0;
-    Bitboard blackPawns = 0;
-    Bitboard blackKnights = 0;
-    Bitboard blackBishops = 0;
-    Bitboard blackRooks = 0;
-    Bitboard blackQueens = 0;
-    Bitboard blackKing = 0;
-
-    PieceColor sideToMove = WHITE;
+    PieceColor sideToMove = PieceColor::WHITE;
     Square whiteKingPosition = 0;
     Square blackKingPosition = 0;
 
@@ -69,26 +54,41 @@ public:
 
     Bitboard getPieces(PieceColor color) const
     {
+
+        using enum PieceKind;
+        using enum PieceColor;
         return color == WHITE
-                   ? whitePawns | whiteKnights | whiteBishops | whiteRooks | whiteQueens | whiteKing
-                   : blackPawns | blackKnights | blackBishops | blackRooks | blackQueens | blackKing;
+                   ? bitboards[Piece{PAWN, WHITE}.index()] |
+                   bitboards[Piece{KNIGHT, WHITE}.index()] |
+                   bitboards[Piece{BISHOP, WHITE}.index()] |
+                   bitboards[Piece{ROOK, WHITE}.index()] |
+                   bitboards[Piece{QUEEN, WHITE}.index()] |
+                   bitboards[Piece{KING, WHITE}.index()]
+                   : bitboards[Piece{PAWN, BLACK}.index()] |
+                   bitboards[Piece{KNIGHT, BLACK}.index()] |
+                   bitboards[Piece{BISHOP, BLACK}.index()] |
+                   bitboards[Piece{ROOK, BLACK}.index()] |
+                   bitboards[Piece{QUEEN, BLACK}.index()] |
+                   bitboards[Piece{KING, BLACK}.index()];
     }
 
     Bitboard getPieces() const
     {
-        return getPieces(WHITE) | getPieces(BLACK);
+        return getPieces(PieceColor::WHITE) | getPieces(PieceColor::BLACK);
     }
 
     bool isSideInCheck(PieceColor side) const
     {
-        Bitboard kingBitboard = side == WHITE ? whiteKing : blackKing;
+        Bitboard kingBitboard = side == PieceColor::WHITE
+                                    ? bitboards[Piece{PieceKind::KING, PieceColor::WHITE}.index()]
+                                    : bitboards[Piece{PieceKind::KING, PieceColor::BLACK}.index()];
         Bitboard squaresAttackedBySide = getAttackingSquares(oppositeColor(side));
         return (squaresAttackedBySide & kingBitboard) != 0;
     }
 
     bool isCheck() const
     {
-        return isSideInCheck(WHITE) || isSideInCheck(BLACK);
+        return isSideInCheck(PieceColor::WHITE) || isSideInCheck(PieceColor::BLACK);
     }
 
     bool isCheckmate(PieceColor side)
@@ -108,17 +108,17 @@ public:
 
     Bitboard getAttackingSquares(PieceColor side) const
     {
-        return side == WHITE ? whiteAttackingSquares : blackAttackingSquares;
+        return side == PieceColor::WHITE ? whiteAttackingSquares : blackAttackingSquares;
     }
 
     Bitboard getPawnAttackingSquares(PieceColor side) const
     {
-        return side == WHITE ? whitePawnAttackingSquares : blackPawnAttackingSquares;
+        return side == PieceColor::WHITE ? whitePawnAttackingSquares : blackPawnAttackingSquares;
     }
 
     bool isSquareEmpty(Square square) const
     {
-        return board[square].kind == PieceKind::NONE;
+        return board[square].isNone();
     }
 
     bool canWhiteShortCastle() const

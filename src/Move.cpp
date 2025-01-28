@@ -18,14 +18,14 @@ Move::Move(const Board& board, std::string uciString)
     Square end = square::fromString(std::string{uciString.at(2)} + uciString.at(3));
     MoveFlag moveFlag = MoveFlag::None;
     // En Passant
-    if (board[start].kind == PieceKind::PAWN && end == board.getEnPassantTargetSquare())
+    if (board[start].kind() == PieceKind::PAWN && end == board.getEnPassantTargetSquare())
     {
         moveFlag = MoveFlag::EnPassant;
     }
     // Castling
-    else if (board[start].kind == PieceKind::KING)
+    else if (board[start].kind() == PieceKind::KING)
     {
-        if (board.sideToMove == WHITE)
+        if (board.sideToMove == PieceColor::WHITE)
         {
             const Square c1 = square::fromString("c1");
             const Square g1 = square::fromString("g1");
@@ -107,9 +107,9 @@ std::string Move::getPgn(Board boardBeforeMove) const
      */
     const Piece capturedPiece_ = board[end()];
 
-    if (movedPiece.kind == PieceKind::PAWN)
+    if (movedPiece.kind() == PieceKind::PAWN)
     {
-        if (capturedPiece_.kind != PieceKind::NONE)
+        if (!capturedPiece_.isNone())
         {
             // First char of square will be the file
             moveString += square::toString(start())[0];
@@ -137,7 +137,7 @@ std::string Move::getPgn(Board boardBeforeMove) const
         std::vector<Move> movesToDestinationSquare;
         for (Move m : board.getLegalMoves())
         {
-            if (board[m.start()].kind == movedPiece.kind && m.end() == end())
+            if (board[m.start()].kind() == movedPiece.kind() && m.end() == end())
             {
                 movesToDestinationSquare.push_back(m);
             }
@@ -181,7 +181,7 @@ std::string Move::getPgn(Board boardBeforeMove) const
             }
         }
     }
-    if (capturedPiece_.kind != PieceKind::NONE)
+    if (!capturedPiece_.isNone())
     {
         moveString.append("x");
     }
@@ -213,7 +213,7 @@ std::string Move::getPgn(Board boardBeforeMove) const
     }
     // Test for check and checkmate, so we need to actually make the move
     board.makeMove(*this); // Board is copied so this is fine
-    if (board.isCheckmate(WHITE) || board.isCheckmate(BLACK))
+    if (board.isCheckmate(PieceColor::WHITE) || board.isCheckmate(PieceColor::BLACK))
     {
         moveString.append("#");
     }

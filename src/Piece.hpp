@@ -3,96 +3,177 @@
 #include <cctype>
 #include <string>
 #include <cstdint>
+#include "MoveFlag.hpp"
 
 enum class PieceKind : uint8_t
 {
-    NONE,
-    PAWN,
-    KNIGHT,
-    BISHOP,
-    ROOK,
-    QUEEN,
-    KING
+    PAWN = 0x00,
+    KNIGHT = 0x01,
+    BISHOP = 0x02,
+    ROOK = 0x03,
+    QUEEN = 0x04,
+    KING = 0x05,
+    NONE = 0xFF
 };
 
-enum class PieceColor
+enum class PieceColor : uint8_t
 {
-    WHITE,
-    BLACK
+    WHITE = 0,
+    BLACK = 0b00001000
 };
 
+// inline PieceKind pieceKind(Piece piece)
+// {
+//     return piece & 0b00000111;
+// }
+//
+// inline PieceColor pieceColor(Piece piece)
+// {
+//     return piece & 0b00001000;
+// }
+//
 inline PieceColor oppositeColor(PieceColor color)
 {
-    return color == PieceColor::WHITE ? PieceColor::BLACK : PieceColor::WHITE;
+    return static_cast<PieceColor>(static_cast<uint8_t>(color) ^ 0b00001000);
 }
+
+//
+// inline bool isNone(Piece piece)
+// {
+//     return pieceKind(piece) == NONE;
+// }
 
 struct Piece
 {
-    PieceKind kind = PieceKind::NONE;
-    PieceColor color = PieceColor::WHITE;
-    bool isSlidingPiece = false;
-
-    bool isNone() const
+    Piece(PieceKind kind, PieceColor color)
+        : data(static_cast<uint8_t>(kind) | static_cast<uint8_t>(color))
     {
-        return kind == PieceKind::NONE;
     }
 
     Piece() = default;
 
-    Piece(PieceKind kind, PieceColor color)
-        : kind(kind), color(color), isSlidingPiece(kind == PieceKind::ROOK || kind == PieceKind::BISHOP || kind == PieceKind::QUEEN)
+    // TODO: Cannot use kind() == NONE because of 0xFF definition
+    PieceKind kind() const
     {
+        return static_cast<PieceKind>(data & 0b00000111);
+    }
 
+    PieceColor color() const
+    {
+        return static_cast<PieceColor>(data & 0b00001000);
+    }
+
+    bool isNone() const
+    {
+        return data == 0xFF;
+    }
+
+    bool isSlidingPiece() const
+    {
+        return kind() == PieceKind::BISHOP || kind() == PieceKind::ROOK || kind() == PieceKind::QUEEN;
     }
 
     explicit Piece(char c)
     {
-        color = isupper(c) ? PieceColor::WHITE : PieceColor::BLACK;
+        using enum PieceKind;
+        using enum PieceColor;
+
+        data = static_cast<uint8_t>(isupper(c) ? WHITE : BLACK);
         switch (tolower(c))
         {
         case 'p':
-            kind = PieceKind::PAWN;
+            data |= static_cast<uint8_t>(PAWN);
             break;
         case 'n':
-            kind = PieceKind::KNIGHT;
+            data |= static_cast<uint8_t>(KNIGHT);
             break;
         case 'b':
-            kind = PieceKind::BISHOP;
+            data |= static_cast<uint8_t>(BISHOP);
             break;
         case 'r':
-            kind = PieceKind::ROOK;
+            data |= static_cast<uint8_t>(ROOK);
             break;
         case 'q':
-            kind = PieceKind::QUEEN;
+            data |= static_cast<uint8_t>(QUEEN);
             break;
         case 'k':
-            kind = PieceKind::KING;
+            data |= static_cast<uint8_t>(KING);
             break;
         default:
-            kind = PieceKind::NONE;
+            data |= static_cast<uint8_t>(NONE);
         }
+    }
 
-        isSlidingPiece = kind == PieceKind::ROOK || kind == PieceKind::BISHOP || kind == PieceKind::QUEEN;
+    Piece(MoveFlag promotion, PieceColor side)
+    {
+        using enum MoveFlag;
+        using enum PieceKind;
+        PieceKind kind = NONE;
+        switch (promotion)
+        {
+        case PromotionQueen:
+            kind = QUEEN;
+            break;
+        case PromotionRook:
+            kind = ROOK;
+            break;
+        case PromotionBishop:
+            kind = BISHOP;
+            break;
+        case PromotionKnight:
+            kind = KNIGHT;
+            break;
+        default:
+            data = static_cast<uint8_t>(NONE);
+        }
+        data = static_cast<uint8_t>(kind) | static_cast<uint8_t>(side);
     }
 
     std::string toString() const
     {
-        switch (kind)
+        using enum PieceKind;
+        using enum PieceColor;
+        switch (kind())
         {
-        case PieceKind::PAWN:
-            return color == PieceColor::WHITE ? "P" : "p";
-        case PieceKind::KNIGHT:
-            return color == PieceColor::WHITE ? "N" : "n";
-        case PieceKind::BISHOP:
-            return color == PieceColor::WHITE ? "B" : "b";
-        case PieceKind::ROOK:
-            return color == PieceColor::WHITE ? "R" : "r";
-        case PieceKind::QUEEN:
-            return color == PieceColor::WHITE ? "Q" : "q";
-        case PieceKind::KING:
-            return color == PieceColor::WHITE ? "K" : "k";
+        case PAWN:
+            return color() == WHITE ? "P" : "p";
+        case KNIGHT:
+            return color() == WHITE ? "N" : "n";
+        case BISHOP:
+            return color() == WHITE ? "B" : "b";
+        case ROOK:
+            return color() == WHITE ? "R" : "r";
+        case QUEEN:
+            return color() == WHITE ? "Q" : "q";
+        case KING:
+            return color() == WHITE ? "K" : "k";
         default:
             return "";
         }
     }
+
+    uint8_t index() const
+    {
+        return data;
+    }
+
+private:
+    uint8_t data = static_cast<uint8_t>(PieceKind::NONE);
 };
+
+namespace pieceIndexes
+{
+    const uint8_t WHITE_PAWN = Piece{PieceKind::PAWN, PieceColor::WHITE}.index();
+    const uint8_t WHITE_KNIGHT = Piece{PieceKind::KNIGHT, PieceColor::WHITE}.index();
+    const uint8_t WHITE_BISHOP = Piece{PieceKind::BISHOP, PieceColor::WHITE}.index();
+    const uint8_t WHITE_ROOK = Piece{PieceKind::ROOK, PieceColor::WHITE}.index();
+    const uint8_t WHITE_QUEEN = Piece{PieceKind::QUEEN, PieceColor::WHITE}.index();
+    const uint8_t WHITE_KING = Piece{PieceKind::KING, PieceColor::WHITE}.index();
+
+    const uint8_t BLACK_PAWN = Piece{PieceKind::PAWN, PieceColor::BLACK}.index();
+    const uint8_t BLACK_KNIGHT = Piece{PieceKind::KNIGHT, PieceColor::BLACK}.index();
+    const uint8_t BLACK_BISHOP = Piece{PieceKind::BISHOP, PieceColor::BLACK}.index();
+    const uint8_t BLACK_ROOK = Piece{PieceKind::ROOK, PieceColor::BLACK}.index();
+    const uint8_t BLACK_QUEEN = Piece{PieceKind::QUEEN, PieceColor::BLACK}.index();
+    const uint8_t BLACK_KING = Piece{PieceKind::KING, PieceColor::BLACK}.index();
+}

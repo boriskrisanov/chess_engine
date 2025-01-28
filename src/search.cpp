@@ -98,7 +98,7 @@ int moveScore(const Board& board, const Move& move)
     // Capturing a high value piece with a low value piece is likely to be a good move
     if (!capturedPiece.isNone())
     {
-        score += pieceValue(capturedPiece.kind);
+        score += pieceValue(capturedPiece.kind());
     }
 
     if (move.isPromotion())
