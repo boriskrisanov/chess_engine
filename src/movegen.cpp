@@ -913,6 +913,214 @@ namespace movegen
         }
     }
 
+    void generateKnightMoves(std::vector<Move>& moves, Board board, Bitboard checkResolutions)
+    {
+        const PieceColor side = board.sideToMove;
+        Bitboard knights = board.bitboards[Piece{PieceKind::KNIGHT, side}.index()];
+
+        while (knights != 0)
+        {
+            const Square i = bitboards::popMSB(knights);
+            Bitboard attackingSquares = knightAttackingSquares[i];
+            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
+
+            // Ignore squares that are occupied by friendly pieces
+            attackingSquares &= ~board.getPieces(side);
+            attackingSquares &= pinLine & checkResolutions;
+            for (Square square : bitboards::squaresOf(attackingSquares))
+            {
+                moves.emplace_back(i, square, MoveFlag::None);
+            }
+        }
+    }
+
+    void generateBishopMoves(std::vector<Move>& moves, Board board, Bitboard checkResolutions)
+    {
+        const PieceColor side = board.sideToMove;
+        Bitboard bishops = board.bitboards[Piece{PieceKind::BISHOP, side}.index()];
+
+        while (bishops != 0)
+        {
+            const Square i = bitboards::popMSB(bishops);
+
+            const Bitboard blockers = board.getPieces() & BISHOP_BLOCKER_MASKS[i];
+            Bitboard attackingSquares = BISHOP_ATTACKING_SQUARES[i][blockers * BISHOP_MAGICS[i] >> BISHOP_SHIFTS[i]];
+
+            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
+
+            // Ignore squares that are occupied by friendly pieces
+            attackingSquares &= ~board.getPieces(side);
+            attackingSquares &= pinLine & checkResolutions;
+            for (Square square : bitboards::squaresOf(attackingSquares))
+            {
+                moves.emplace_back(i, square, MoveFlag::None);
+            }
+        }
+    }
+
+    void generateRookMoves(std::vector<Move>& moves, Board board, Bitboard checkResolutions)
+    {
+        const PieceColor side = board.sideToMove;
+        Bitboard rooks = board.bitboards[Piece{PieceKind::ROOK, side}.index()];
+
+        while (rooks != 0)
+        {
+            const Square i = bitboards::popMSB(rooks);
+
+            const Bitboard blockers = board.getPieces() & ROOK_BLOCKER_MASKS[i];
+            Bitboard attackingSquares = ROOK_ATTACKING_SQUARES[i][blockers * ROOK_MAGICS[i] >> ROOK_SHIFTS[i]];
+
+            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
+
+            // Ignore squares that are occupied by friendly pieces
+            attackingSquares &= ~board.getPieces(side);
+            attackingSquares &= pinLine & checkResolutions;
+            for (Square square : bitboards::squaresOf(attackingSquares))
+            {
+                moves.emplace_back(i, square, MoveFlag::None);
+            }
+        }
+    }
+
+    void generateQueenMoves(std::vector<Move>& moves, Board board, Bitboard checkResolutions)
+    {
+        const PieceColor side = board.sideToMove;
+        Bitboard queens = board.bitboards[Piece{PieceKind::QUEEN, side}.index()];
+
+        while (queens != 0)
+        {
+            const Square i = bitboards::popMSB(queens);
+
+            const Bitboard horizontalBlockers = board.getPieces() & ROOK_BLOCKER_MASKS[i];
+            const Bitboard diagonalBlockers = board.getPieces() & BISHOP_BLOCKER_MASKS[i];
+            const Bitboard horizontalSquares = ROOK_ATTACKING_SQUARES[i][(horizontalBlockers * ROOK_MAGICS[
+                i]) >> ROOK_SHIFTS[i]];
+            const Bitboard diagonalSquares = BISHOP_ATTACKING_SQUARES[i][(diagonalBlockers * BISHOP_MAGICS[
+                i]) >> BISHOP_SHIFTS[i]];
+            Bitboard attackingSquares = horizontalSquares | diagonalSquares;
+
+            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
+            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
+
+            // Ignore squares that are occupied by friendly pieces
+            attackingSquares &= ~board.getPieces(side);
+            attackingSquares &= pinLine & checkResolutions;
+            for (Square square : bitboards::squaresOf(attackingSquares))
+            {
+                moves.emplace_back(i, square, MoveFlag::None);
+            }
+        }
+    }
+
+    void generateKingMoves(std::vector<Move>& moves, Board board, Bitboard checkResolutions)
+    {
+        const PieceColor side = board.sideToMove;
+        Bitboard king = board.bitboards[Piece{PieceKind::KING, side}.index()];
+        Square i = bitboards::popMSB(king);
+        Bitboard attackingSquares = kingAttackingSquares[i];
+        attackingSquares &= ~board.getPieces(side);
+        const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
+        const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
+        attackingSquares &= pinLine;
+
+        const Bitboard opponentAttackingSquares = board.getAttackingSquares(oppositeColor(side));
+        // Prevent the king from moving into check
+        attackingSquares &= ~opponentAttackingSquares;
+
+        for (Square targetSquare : bitboards::squaresOf(attackingSquares))
+        {
+            if (isRayCheck)
+            {
+                /*
+                Check that the square the king is moving to is still not attacked after the move. This can happen
+                when moving away from a sliding piece along its attack ray, as the square behind the king
+                wouldn't be attacked since the attacking squares would only be recomputed after the move. For
+                example, in "k7/8/8/2q5/8/4K3/8/8 w", Kf2 is generated as a legal move, even though the king
+                would still be in check.
+                */
+                using enum Direction;
+                using std::ranges::find;
+                if ((find(rayCheckDirections, UP) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<
+                            int>(DOWN))
+                    || (find(rayCheckDirections, DOWN) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(UP))
+                    || (find(rayCheckDirections, LEFT) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(RIGHT))
+                    || (find(rayCheckDirections, RIGHT) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(LEFT))
+                    || (find(rayCheckDirections, UP_LEFT) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(DOWN_RIGHT))
+                    || (find(rayCheckDirections, UP_RIGHT) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(DOWN_LEFT))
+                    || (find(rayCheckDirections, DOWN_LEFT) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(UP_RIGHT))
+                    || (find(rayCheckDirections, DOWN_RIGHT) != rayCheckDirections.end() && targetSquare == i
+                        +
+                        static_cast<int>(UP_LEFT)))
+                {
+                    continue;
+                }
+            }
+
+            moves.emplace_back(i, targetSquare, MoveFlag::None);
+        }
+
+
+        // Castling
+        if (!board.isSideInCheck(side))
+        {
+            if (side == WHITE)
+            {
+                if (board.canWhiteShortCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(i + 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(i + 2)) == 0
+                    && board.isSquareEmpty(i + 1)
+                    && board.isSquareEmpty(i + 2)
+                )
+                {
+                    moves.emplace_back(i, i + 2, MoveFlag::ShortCastling);
+                }
+                if (board.canWhiteLongCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(i - 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(i - 2)) == 0
+                    && board.isSquareEmpty(i - 1)
+                    && board.isSquareEmpty(i - 2)
+                    && board.isSquareEmpty(i - 3)
+                )
+                {
+                    moves.emplace_back(i, i - 2, MoveFlag::LongCastling);
+                }
+            }
+            else
+            {
+                if (board.canBlackShortCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(i + 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(i + 2)) == 0
+                    && board.isSquareEmpty(i + 1)
+                    && board.isSquareEmpty(i + 2)
+                )
+                {
+                    moves.emplace_back(i, i + 2, MoveFlag::ShortCastling);
+                }
+                if (board.canBlackLongCastle()
+                    && (opponentAttackingSquares & bitboards::withSquare(i - 1)) == 0
+                    && (opponentAttackingSquares & bitboards::withSquare(i - 2)) == 0
+                    && board.isSquareEmpty(i - 1)
+                    && board.isSquareEmpty(i - 2)
+                    && board.isSquareEmpty(i - 3)
+                )
+                {
+                    moves.emplace_back(i, i - 2, MoveFlag::LongCastling);
+                }
+            }
+        }
+    }
+
+
     std::vector<Move> generateLegalMoves(Board& board)
     {
         vector<Move> moves;
@@ -930,282 +1138,11 @@ namespace movegen
         computePinLines(board, sideToMove);
 
         generatePawnMoves(moves, board, checkResolutions);
-
-        // -------------
-
-
-        for (Square pos = 0; pos < 64; pos++)
-        {
-            const Piece piece = board[pos];
-            if (piece.isNone() || piece.color() != board.sideToMove)
-            {
-                continue;
-            }
-            Bitboard attackingSquares = generateAttackingSquares(piece, pos, board);
-
-            // Ignore squares that are occupied by friendly pieces
-            attackingSquares &= ~board.getPieces(piece.color());
-            const bool isPinned = (bitboards::withSquare(pos) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[pos] : bitboards::ALL_SQUARES;
-            attackingSquares &= pinLine;
-
-            if (piece.kind() == PieceKind::KING)
-            {
-                const Bitboard opponentAttackingSquares = board.getAttackingSquares(oppositeColor(piece.color()));
-                // Prevent the king from moving into check
-                attackingSquares &= ~opponentAttackingSquares;
-
-                for (Square targetSquare : bitboards::squaresOf(attackingSquares))
-                {
-                    if (isRayCheck)
-                    {
-                        /*
-                        Check that the square the king is moving to is still not attacked after the move. This can happen
-                        when moving away from a sliding piece along its attack ray, as the square behind the king
-                        wouldn't be attacked since the attacking squares would only be recomputed after the move. For
-                        example, in "k7/8/8/2q5/8/4K3/8/8 w", Kf2 is generated as a legal move, even though the king
-                        would still be in check.
-                        */
-                        using enum Direction;
-                        using std::ranges::find;
-                        if ((find(rayCheckDirections, UP) != rayCheckDirections.end() && targetSquare == pos +
-                                static_cast<
-                                    int>(DOWN))
-                            || (find(rayCheckDirections, DOWN) != rayCheckDirections.end() && targetSquare == pos +
-                                static_cast<int>(UP))
-                            || (find(rayCheckDirections, LEFT) != rayCheckDirections.end() && targetSquare == pos +
-                                static_cast<int>(RIGHT))
-                            || (find(rayCheckDirections, RIGHT) != rayCheckDirections.end() && targetSquare == pos +
-                                static_cast<int>(LEFT))
-                            || (find(rayCheckDirections, UP_LEFT) != rayCheckDirections.end() && targetSquare == pos +
-                                static_cast<int>(DOWN_RIGHT))
-                            || (find(rayCheckDirections, UP_RIGHT) != rayCheckDirections.end() && targetSquare == pos +
-                                static_cast<int>(DOWN_LEFT))
-                            || (find(rayCheckDirections, DOWN_LEFT) != rayCheckDirections.end() && targetSquare == pos +
-                                static_cast<int>(UP_RIGHT))
-                            || (find(rayCheckDirections, DOWN_RIGHT) != rayCheckDirections.end() && targetSquare == pos
-                                +
-                                static_cast<int>(UP_LEFT)))
-                        {
-                            continue;
-                        }
-                    }
-
-                    moves.emplace_back(pos, targetSquare, MoveFlag::None);
-                }
-
-
-                // Castling
-                if (!board.isSideInCheck(piece.color()))
-                {
-                    if (piece.color() == WHITE)
-                    {
-                        if (board.canWhiteShortCastle()
-                            && (opponentAttackingSquares & bitboards::withSquare(pos + 1)) == 0
-                            && (opponentAttackingSquares & bitboards::withSquare(pos + 2)) == 0
-                            && board.isSquareEmpty(pos + 1)
-                            && board.isSquareEmpty(pos + 2)
-                        )
-                        {
-                            moves.emplace_back(pos, pos + 2, MoveFlag::ShortCastling);
-                        }
-                        if (board.canWhiteLongCastle()
-                            && (opponentAttackingSquares & bitboards::withSquare(pos - 1)) == 0
-                            && (opponentAttackingSquares & bitboards::withSquare(pos - 2)) == 0
-                            && board.isSquareEmpty(pos - 1)
-                            && board.isSquareEmpty(pos - 2)
-                            && board.isSquareEmpty(pos - 3)
-                        )
-                        {
-                            moves.emplace_back(pos, pos - 2, MoveFlag::LongCastling);
-                        }
-                    }
-                    else
-                    {
-                        if (board.canBlackShortCastle()
-                            && (opponentAttackingSquares & bitboards::withSquare(pos + 1)) == 0
-                            && (opponentAttackingSquares & bitboards::withSquare(pos + 2)) == 0
-                            && board.isSquareEmpty(pos + 1)
-                            && board.isSquareEmpty(pos + 2)
-                        )
-                        {
-                            moves.emplace_back(pos, pos + 2, MoveFlag::ShortCastling);
-                        }
-                        if (board.canBlackLongCastle()
-                            && (opponentAttackingSquares & bitboards::withSquare(pos - 1)) == 0
-                            && (opponentAttackingSquares & bitboards::withSquare(pos - 2)) == 0
-                            && board.isSquareEmpty(pos - 1)
-                            && board.isSquareEmpty(pos - 2)
-                            && board.isSquareEmpty(pos - 3)
-                        )
-                        {
-                            moves.emplace_back(pos, pos - 2, MoveFlag::LongCastling);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (piece.kind() == PieceKind::PAWN)
-                {
-                    continue;
-                    const int8_t enPassantTargetSquare = board.getEnPassantTargetSquare();
-
-                    // Captures
-                    for (Square targetSquare : bitboards::squaresOf(attackingSquares))
-                    {
-                        Piece capturedPiece = board[targetSquare];
-                        if (capturedPiece.isNone() || capturedPiece.color() == piece.color() || (
-                            bitboards::withSquare(targetSquare) & pinLine) == 0 || (bitboards::withSquare(targetSquare)
-                            &
-                            checkResolutions) == 0)
-                        {
-                            continue;
-                        }
-
-                        Move move{pos, targetSquare, MoveFlag::None};
-
-                        // Capture with promotion
-                        if ((piece.color() == WHITE && square::rank(targetSquare) == 8) || (piece.color() == BLACK &&
-                            square::rank(targetSquare) == 1))
-                        {
-                            moves.emplace_back(pos, targetSquare, MoveFlag::PromotionKnight);
-                            moves.emplace_back(pos, targetSquare, MoveFlag::PromotionBishop);
-                            moves.emplace_back(pos, targetSquare, MoveFlag::PromotionRook);
-                            moves.emplace_back(pos, targetSquare, MoveFlag::PromotionQueen);
-                        }
-                        else
-                        {
-                            moves.push_back(move);
-                        }
-                    }
-
-                    // En passant
-                    if (enPassantTargetSquare != -1 && (bitboards::withSquare(
-                        enPassantTargetSquare) & pinLine) != 0)
-                    {
-                        bool enPassantPossible = true;
-                        const Square kingPos = board.sideToMove == WHITE
-                                                   ? board.whiteKingPosition
-                                                   : board.blackKingPosition;
-                        if (square::rank(kingPos) == square::rank(pos) || true)
-                        {
-                            // Inefficient but fine for now
-                            board.makeMove(Move{pos, static_cast<Square>(enPassantTargetSquare), MoveFlag::EnPassant});
-                            enPassantPossible = !board.isSideInCheck(piece.color());
-                            board.unmakeMove();
-                        }
-                        if (enPassantPossible)
-                        {
-                            if (piece.color() == WHITE)
-                            {
-                                if (enPassantTargetSquare == pos - 8 - 1 && edgeDistances[pos].left > 0 && edgeDistances
-                                    [
-                                        pos].top > 0)
-                                {
-                                    moves.emplace_back(pos, enPassantTargetSquare, MoveFlag::EnPassant);
-                                }
-                                else if (enPassantTargetSquare == pos - 8 + 1 && edgeDistances[pos].right > 0 &&
-                                    edgeDistances
-                                    [pos].top > 0)
-                                {
-                                    moves.emplace_back(pos, enPassantTargetSquare, MoveFlag::EnPassant);
-                                }
-                            }
-                            else
-                            {
-                                if (enPassantTargetSquare == pos + 8 - 1 && edgeDistances[pos].left > 0 && edgeDistances
-                                    [
-                                        pos].bottom > 0)
-                                {
-                                    moves.emplace_back(pos, enPassantTargetSquare, MoveFlag::EnPassant);
-                                }
-                                else if (enPassantTargetSquare == pos + 8 + 1 && edgeDistances[pos].right > 0 &&
-                                    edgeDistances
-                                    [pos].bottom > 0)
-                                {
-                                    moves.emplace_back(pos, enPassantTargetSquare, MoveFlag::EnPassant);
-                                }
-                            }
-                        }
-                    }
-
-                    // Normal moves
-                    if (piece.color() == WHITE)
-                    {
-                        if (board.isSquareEmpty(pos - 8))
-                        {
-                            const Bitboard targetBitboard = bitboards::withSquare(pos - 8);
-                            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
-                            {
-                                if (square::rank(pos - 8) == 8)
-                                {
-                                    // Promotion
-                                    moves.emplace_back(pos, pos - 8, MoveFlag::PromotionKnight);
-                                    moves.emplace_back(pos, pos - 8, MoveFlag::PromotionBishop);
-                                    moves.emplace_back(pos, pos - 8, MoveFlag::PromotionRook);
-                                    moves.emplace_back(pos, pos - 8, MoveFlag::PromotionQueen);
-                                }
-                                else
-                                {
-                                    // Normal move
-                                    moves.emplace_back(pos, pos - 8, MoveFlag::None);
-                                }
-                            }
-
-                            const Bitboard targetBitboard2 = bitboards::withSquare(pos - 8 * 2);
-                            if (square::rank(pos) == 2 && board.isSquareEmpty(pos - 8 * 2) && (checkResolutions &
-                                targetBitboard2) != 0 && (pinLine & targetBitboard2) != 0)
-                            {
-                                // Move two squares forward on first move
-                                moves.emplace_back(pos, pos - 8 * 2, MoveFlag::None);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (board.isSquareEmpty(pos + 8))
-                        {
-                            const Bitboard targetBitboard = bitboards::withSquare(pos + 8);
-                            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
-                            {
-                                if (square::rank(pos + 8) == 1)
-                                {
-                                    // Promotion
-                                    moves.emplace_back(pos, pos + 8, MoveFlag::PromotionKnight);
-                                    moves.emplace_back(pos, pos + 8, MoveFlag::PromotionBishop);
-                                    moves.emplace_back(pos, pos + 8, MoveFlag::PromotionRook);
-                                    moves.emplace_back(pos, pos + 8, MoveFlag::PromotionQueen);
-                                }
-                                else
-                                {
-                                    // Normal move
-                                    moves.emplace_back(pos, pos + 8, MoveFlag::None);
-                                }
-                            }
-
-                            const Bitboard targetBitboard2 = bitboards::withSquare(pos + 8 * 2);
-                            if (square::rank(pos) == 7 && board[pos + 8 * 2].isNone() && (
-                                checkResolutions
-                                &
-                                targetBitboard2) != 0 && (pinLine & targetBitboard2) != 0)
-                            {
-                                // Move two squares forward on first move
-                                moves.emplace_back(pos, pos + 8 * 2, MoveFlag::None);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    attackingSquares &= pinLine & checkResolutions;
-                    for (Square square : bitboards::squaresOf(attackingSquares))
-                    {
-                        moves.emplace_back(pos, square, MoveFlag::None);
-                    }
-                }
-            }
-        }
+        generateKnightMoves(moves, board, checkResolutions);
+        generateBishopMoves(moves, board, checkResolutions);
+        generateRookMoves(moves, board, checkResolutions);
+        generateQueenMoves(moves, board, checkResolutions);
+        generateKingMoves(moves, board, checkResolutions);
 
         return moves;
     }
