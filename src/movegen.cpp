@@ -928,9 +928,10 @@ namespace movegen
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
             attackingSquares &= pinLine & checkResolutions;
-            for (Square square : bitboards::squaresOf(attackingSquares))
+            while (attackingSquares != 0)
             {
-                moves.emplace_back(i, square, MoveFlag::None);
+                Square end = bitboards::popMSB(attackingSquares);
+                moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
@@ -953,9 +954,10 @@ namespace movegen
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
             attackingSquares &= pinLine & checkResolutions;
-            for (Square square : bitboards::squaresOf(attackingSquares))
+            while (attackingSquares != 0)
             {
-                moves.emplace_back(i, square, MoveFlag::None);
+                Square end = bitboards::popMSB(attackingSquares);
+                moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
@@ -978,9 +980,10 @@ namespace movegen
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
             attackingSquares &= pinLine & checkResolutions;
-            for (Square square : bitboards::squaresOf(attackingSquares))
+            while (attackingSquares != 0)
             {
-                moves.emplace_back(i, square, MoveFlag::None);
+                Square end = bitboards::popMSB(attackingSquares);
+                moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
@@ -1008,9 +1011,10 @@ namespace movegen
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
             attackingSquares &= pinLine & checkResolutions;
-            for (Square square : bitboards::squaresOf(attackingSquares))
+            while (attackingSquares != 0)
             {
-                moves.emplace_back(i, square, MoveFlag::None);
+                Square end = bitboards::popMSB(attackingSquares);
+                moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
@@ -1030,8 +1034,9 @@ namespace movegen
         // Prevent the king from moving into check
         attackingSquares &= ~opponentAttackingSquares;
 
-        for (Square targetSquare : bitboards::squaresOf(attackingSquares))
+        while (attackingSquares != 0)
         {
+            Square targetSquare = bitboards::popMSB(attackingSquares);
             if (isRayCheck)
             {
                 /*
