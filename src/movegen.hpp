@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "MoveList.hpp"
 #include "Move.hpp"
 #include "Piece.hpp"

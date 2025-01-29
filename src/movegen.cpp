@@ -637,7 +637,7 @@ namespace movegen
         }
     }
 
-    void generatePawnMoves(MoveList& moves, Board board, Bitboard checkResolutions)
+    void generatePawnMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard pawns = board.bitboards[Piece{PieceKind::PAWN, side}.index()];
@@ -803,7 +803,7 @@ namespace movegen
         }
     }
 
-    void generateKnightMoves(MoveList& moves, Board board, Bitboard checkResolutions)
+    void generateKnightMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard knights = board.bitboards[Piece{PieceKind::KNIGHT, side}.index()];
@@ -826,7 +826,7 @@ namespace movegen
         }
     }
 
-    void generateBishopMoves(MoveList& moves, Board board, Bitboard checkResolutions)
+    void generateBishopMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard bishops = board.bitboards[Piece{PieceKind::BISHOP, side}.index()];
@@ -852,7 +852,7 @@ namespace movegen
         }
     }
 
-    void generateRookMoves(MoveList& moves, Board board, Bitboard checkResolutions)
+    void generateRookMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard rooks = board.bitboards[Piece{PieceKind::ROOK, side}.index()];
@@ -878,7 +878,7 @@ namespace movegen
         }
     }
 
-    void generateQueenMoves(MoveList& moves, Board board, Bitboard checkResolutions)
+    void generateQueenMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard queens = board.bitboards[Piece{PieceKind::QUEEN, side}.index()];
@@ -909,7 +909,7 @@ namespace movegen
         }
     }
 
-    void generateKingMoves(MoveList& moves, Board board, Bitboard checkResolutions)
+    void generateKingMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard king = board.bitboards[Piece{PieceKind::KING, side}.index()];
@@ -1019,7 +1019,6 @@ namespace movegen
     MoveList generateLegalMoves(Board& board)
     {
         MoveList moves;
-
         // TODO: Improve architecture and minimise use of globals
         // Computed by checkResolutionSquares()
         isRayCheck = false;
@@ -1029,6 +1028,7 @@ namespace movegen
         const Bitboard checkResolutions = board.isSideInCheck(sideToMove)
                                               ? checkResolutionSquares(board)
                                               : bitboards::ALL_SQUARES;
+
         computePinLines(board, sideToMove);
 
         generatePawnMoves(moves, board, checkResolutions);
