@@ -5,6 +5,7 @@
 #include <string>
 
 #include "bitboards.hpp"
+#include "movegen.hpp"
 #include "Piece.hpp"
 
 const std::string STARTING_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -33,8 +34,8 @@ public:
     void makeMove(Move move);
     void makeMove(std::string uciMove);
     void unmakeMove();
-    std::vector<Move> getLegalMoves();
-    std::vector<Move> getLegalCaptures();
+    MoveList getLegalMoves();
+    MoveList getLegalCaptures();
     void getPseudoLegalMoves(std::vector<Move>& moves) const;
     bool isSideInCheckAfterMove(Move move, PieceColor side);
     bool isPseudoLegalMoveLegal(Move move);

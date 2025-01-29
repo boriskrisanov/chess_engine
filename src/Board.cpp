@@ -535,16 +535,14 @@ void Board::unmakeMove()
     sideToMove = oppositeColor(sideToMove);
 }
 
-std::vector<Move> Board::getLegalMoves()
+MoveList Board::getLegalMoves()
 {
     return movegen::generateLegalMoves(*this);
 }
 
-std::vector<Move> Board::getLegalCaptures()
+MoveList Board::getLegalCaptures()
 {
-    std::vector<Move> captures{};
-    // Completely arbitrary, it's probably better to over-allocate than reallocating multiple times
-    captures.reserve(10);
+    MoveList captures{};
     for (Move move : movegen::generateLegalMoves(*this))
     {
         if (!board[move.end()].isNone() || move.moveFlag() == MoveFlag::EnPassant)

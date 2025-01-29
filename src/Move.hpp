@@ -2,7 +2,6 @@
 
 #include "Square.hpp"
 #include <cstdint>
-
 #include "Piece.hpp"
 #include "MoveFlag.hpp"
 

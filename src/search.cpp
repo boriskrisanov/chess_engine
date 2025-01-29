@@ -123,7 +123,7 @@ int moveScore(const Board& board, const Move& move)
     return score;
 }
 
-void orderMoves(Board& board, vector<Move>& moves)
+void orderMoves(Board& board, MoveList& moves)
 {
     for (Move& move : moves)
     {
@@ -181,7 +181,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
         return qSearch(board, alpha, beta);
     }
 
-    vector<Move> moves = board.getLegalMoves();
+    MoveList moves = board.getLegalMoves();
     orderMoves(board, moves);
 
     // Assume that no moves will exceed alpha
@@ -259,7 +259,7 @@ int qSearch(Board& board, int alpha, int beta)
     }
     alpha = std::max(alpha, eval);
 
-    vector<Move> captures = board.getLegalCaptures();
+    MoveList captures = board.getLegalCaptures();
     orderMoves(board, captures);
 
     for (Move move : captures)
@@ -281,10 +281,10 @@ int qSearch(Board& board, int alpha, int beta)
 SearchResult bestMove(Board& board, uint8_t depth)
 {
     debugStats = DebugStats{};
-    vector<Move> moves = board.getLegalMoves();
+    MoveList moves = board.getLegalMoves();
 
     // TODO: This will crash if there are no legal moves (mate/stalemate)
-    Move bestMove = moves.at(0);
+    Move bestMove = moves[0];
     int bestEval = NEGATIVE_INFINITY;
 
     for (Move move : moves)
