@@ -146,85 +146,22 @@ namespace movegen
         return bitboards;
     }();
 
-    array<Bitboard, 64> whitePawnAttackingSquares = []()
-    {
-        array<Bitboard, 64> bitboards{};
-        for (Square i = 0; i < 64; i++)
-        {
-            Bitboard squares = 0;
-            const auto edgeDistance = edgeDistances[i];
-            if (edgeDistance.top > 0 && edgeDistance.right > 0)
-            {
-                squares |= bitboards::withSquare(i - 8 + 1);
-            }
-            if (edgeDistance.top > 0 && edgeDistance.left > 0)
-            {
-                squares |= bitboards::withSquare(i - 8 - 1);
-            }
-            bitboards[i] = squares;
-        }
-        return bitboards;
-    }();
-
-    array<Bitboard, 64> blackPawnAttackingSquares = []()
-    {
-        array<Bitboard, 64> bitboards{};
-        for (Square i = 0; i < 64; i++)
-        {
-            Bitboard squares = 0;
-            const auto edgeDistance = edgeDistances[i];
-            if (edgeDistance.bottom > 0 && edgeDistance.right > 0)
-            {
-                squares |= bitboards::withSquare(i + 8 + 1);
-            }
-            if (edgeDistance.bottom > 0 && edgeDistance.left > 0)
-            {
-                squares |= bitboards::withSquare(i + 8 - 1);
-            }
-            bitboards[i] = squares;
-        }
-        return bitboards;
-    }();
-
     constexpr array<Bitboard, 64> kingAttackingSquares = []() consteval
     {
+        using namespace bitboards;
         array<Bitboard, 64> bitboards{};
         for (Square i = 0; i < 64; i++)
         {
             Bitboard squares = 0;
-            const auto edgeDistance = edgeDistances[i];
-            if (edgeDistance.left >= 1)
-            {
-                squares |= bitboards::withSquare(i - 1);
-            }
-            if (edgeDistance.right >= 1)
-            {
-                squares |= bitboards::withSquare(i + 1);
-            }
-            if (edgeDistance.top >= 1)
-            {
-                squares |= bitboards::withSquare(i - 8);
-            }
-            if (edgeDistance.bottom >= 1)
-            {
-                squares |= bitboards::withSquare(i + 8);
-            }
-            if (edgeDistance.left >= 1 && edgeDistance.top >= 1)
-            {
-                squares |= bitboards::withSquare(i - 8 - 1);
-            }
-            if (edgeDistance.right >= 1 && edgeDistance.top >= 1)
-            {
-                squares |= bitboards::withSquare(i - 8 + 1);
-            }
-            if (edgeDistance.left >= 1 && edgeDistance.bottom >= 1)
-            {
-                squares |= bitboards::withSquare(i + 8 - 1);
-            }
-            if (edgeDistance.right >= 1 && edgeDistance.bottom >= 1)
-            {
-                squares |= bitboards::withSquare(i + 8 + 1);
-            }
+            const Bitboard king = withSquare(i);
+            squares |= (king & ~RANK_8) << 8;
+            squares |= (king & ~RANK_1) >> 8;
+            squares |= (king & ~FILE_A) << 1;
+            squares |= (king & ~FILE_H) >> 1;
+            squares |= (king & ~RANK_8 & ~FILE_A) << 9;
+            squares |= (king & ~RANK_8 & ~FILE_H) << 7;
+            squares |= (king & ~RANK_1 & ~FILE_A) >> 7;
+            squares |= (king & ~RANK_1 & ~FILE_H) >> 9;
             bitboards[i] = squares;
         }
         return bitboards;
@@ -454,54 +391,6 @@ namespace movegen
     // TODO: Use array instead of vector (array of pointers to arrays of different lengths)
     const array<vector<Bitboard>, 64> ROOK_ATTACKING_SQUARES = computeRookAttackingSquares();
     const array<vector<Bitboard>, 64> BISHOP_ATTACKING_SQUARES = computeBishopAttackingSquares();
-
-    Bitboard generateAttackingSquares(Piece piece, Square position, const Board& board)
-    {
-        // TODO: Use diagonal edge distances
-        Bitboard squares = 0;
-        switch (piece.kind())
-        {
-        case PieceKind::PAWN:
-            squares = piece.color() == WHITE
-                          ? whitePawnAttackingSquares[position]
-                          : blackPawnAttackingSquares[position];
-            break;
-        case PieceKind::KNIGHT:
-            squares = knightAttackingSquares[position];
-            break;
-        case PieceKind::BISHOP:
-            {
-                const Bitboard blockers = board.getPieces() & BISHOP_BLOCKER_MASKS[position];
-                squares = BISHOP_ATTACKING_SQUARES[position][blockers * BISHOP_MAGICS[position] >> BISHOP_SHIFTS[
-                    position]];
-            }
-            break;
-        case PieceKind::ROOK:
-            {
-                const Bitboard blockers = board.getPieces() & ROOK_BLOCKER_MASKS[position];
-                squares = ROOK_ATTACKING_SQUARES[position][blockers * ROOK_MAGICS[position] >> ROOK_SHIFTS[position]];
-            }
-            break;
-        case PieceKind::QUEEN:
-            {
-                const Bitboard horizontalBlockers = board.getPieces() & ROOK_BLOCKER_MASKS[position];
-                const Bitboard diagonalBlockers = board.getPieces() & BISHOP_BLOCKER_MASKS[position];
-                const Bitboard horizontalSquares = ROOK_ATTACKING_SQUARES[position][(horizontalBlockers * ROOK_MAGICS[
-                    position]) >> ROOK_SHIFTS[position]];
-                const Bitboard diagonalSquares = BISHOP_ATTACKING_SQUARES[position][(diagonalBlockers * BISHOP_MAGICS[
-                    position]) >> BISHOP_SHIFTS[position]];
-                squares = horizontalSquares | diagonalSquares;
-            }
-            break;
-        case PieceKind::KING:
-            squares = kingAttackingSquares[position];
-            break;
-        default:
-            break;
-        }
-
-        return squares;
-    }
 
     // Inefficient, fine for now
     vector<Direction> rayCheckDirections;
@@ -757,7 +646,7 @@ namespace movegen
 
 
         const Bitboard doublePushTarget = side == WHITE ? bitboards::RANK_4 : bitboards::RANK_5;
-        const Bitboard promotionRank = side == WHITE ? bitboards::RANK_1 : bitboards::RANK_8;
+        const Bitboard promotionRank = side == WHITE ? bitboards::RANK_8 : bitboards::RANK_1;
         Bitboard singlePushes = (side == WHITE ? pawns << 8 : pawns >> 8) & emptySquares;
         Bitboard doublePushes = (side == WHITE ? singlePushes << 8 : singlePushes >> 8) & emptySquares &
             doublePushTarget;
@@ -1154,13 +1043,13 @@ namespace movegen
 
     Bitboard getPawnAttackingSquares(Bitboard pawns, PieceColor side)
     {
-        Bitboard squares = 0;
-        while (pawns != 0)
-        {
-            Square index = bitboards::popMSB(pawns);
-            squares |= (side == WHITE ? whitePawnAttackingSquares[index] : blackPawnAttackingSquares[index]);
-        }
-        return squares;
+        Bitboard leftCaptures = (side == WHITE
+                                     ? ((pawns & ~bitboards::FILE_A) << 9)
+                                     : ((pawns & ~bitboards::FILE_A) >> 7));
+        Bitboard rightCaptures = (side == WHITE
+                                      ? ((pawns & ~bitboards::FILE_H) << 7)
+                                      : ((pawns & ~bitboards::FILE_H) >> 9));
+        return leftCaptures | rightCaptures;
     }
 
     template <PieceKind Kind>
