@@ -9,7 +9,7 @@
 #include "Move.hpp"
 #include "utils.hpp"
 
-inline size_t perft(Board& board, uint8_t depth, std::map<std::string, size_t>& moveCounts, bool rootNode = true)
+inline size_t perft(Board& board, uint8_t depth, bool rootNode = true)
 {
     size_t positionsReached = 0;
 
@@ -22,13 +22,12 @@ inline size_t perft(Board& board, uint8_t depth, std::map<std::string, size_t>& 
     {
         board.makeMove(move);
 
-        size_t result = perft(board, depth - 1, moveCounts, false);
+        size_t result = perft(board, depth - 1, false);
         positionsReached += result;
 
         if (rootNode)
-        [[unlikely]]
         {
-            moveCounts[static_cast<std::string>(move)] = result;
+            std::cout << static_cast<std::string>(move) << ": " << result << "\n";
         }
 
         board.unmakeMove();
@@ -59,12 +58,8 @@ inline size_t runPerft(uint8_t depth, std::string fen, std::string moveSequence)
 
     std::map<std::string, size_t> moveCounts;
     auto start = std::chrono::system_clock::now();
-    size_t total = perft(board, depth, moveCounts); // crash
+    size_t total = perft(board, depth);
     auto end = std::chrono::system_clock::now();
-    for (const auto& [key, value] : moveCounts)
-    {
-        std::cout << key << ": " << value << "\n";
-    }
     std::cout << total << " positions reached in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
         << "\n";
 
@@ -80,8 +75,7 @@ inline void test(uint8_t depth, std::string fen, size_t expectedValue)
 {
     Board board;
     board.loadFen(fen);
-    std::map<std::string, size_t> m;
-    size_t total = perft(board, depth, m);
+    size_t total = perft(board, depth);
     std::cout << "test " << fen << " ";
     if (total == expectedValue)
     {
