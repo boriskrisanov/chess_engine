@@ -36,6 +36,11 @@ struct MoveList
         return &moves[count];
     }
 
+    size_t size()
+    {
+        return count;
+    }
+
 private:
     std::array<Move, 218> moves{};
     uint8_t count = 0;

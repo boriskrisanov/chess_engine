@@ -13,9 +13,9 @@ inline size_t perft(Board& board, uint8_t depth, bool rootNode = true)
 {
     size_t positionsReached = 0;
 
-    if (depth == 0)
+    if (depth == 1)
     {
-        return 1;
+        return board.getLegalMoves().size();
     }
 
     for (Move move : board.getLegalMoves())
