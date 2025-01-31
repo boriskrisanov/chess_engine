@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <cstddef>
 #include "Move.hpp"
 
 struct MoveList
@@ -36,12 +35,12 @@ struct MoveList
         return &moves[count];
     }
 
-    size_t size()
+    size_t size() const
     {
         return count;
     }
 
 private:
-    std::array<Move, 218> moves{};
+    std::array<Move, 218> moves;
     uint8_t count = 0;
 };
