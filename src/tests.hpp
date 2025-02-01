@@ -13,16 +13,21 @@ inline size_t perft(Board& board, uint8_t depth, bool rootNode = true)
 {
     size_t positionsReached = 0;
 
-    if (depth == 1)
+    // If running perft(1), print the full move list for debugging purposes
+    if (depth == 1 && !rootNode)
     {
         return board.getLegalMoves().size();
+    }
+    if (depth == 0)
+    {
+        return 1;
     }
 
     for (Move move : board.getLegalMoves())
     {
         board.makeMove(move);
 
-        size_t result = perft(board, depth - 1, false);
+        const size_t result = perft(board, depth - 1, false);
         positionsReached += result;
 
         if (rootNode)

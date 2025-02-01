@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <vector>
 #include "Move.hpp"
-#include <limits>
 
 typedef uint64_t Bitboard;
 
@@ -17,9 +16,14 @@ namespace bitboards
 
     inline Square popMSB(Bitboard& bitboard)
     {
-        Square index = std::countl_zero(bitboard);
+        const Square index = std::countl_zero(bitboard);
         bitboard &= ~withSquare(index);
         return index;
+    }
+
+    inline Square getMSB(Bitboard bitboard)
+    {
+        return std::countl_zero(bitboard);
     }
 
     std::vector<Square> squaresOf(Bitboard bitboard);

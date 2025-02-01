@@ -45,8 +45,6 @@ public:
     bool isDraw();
 
     PieceColor sideToMove = PieceColor::WHITE;
-    Square whiteKingPosition = 0;
-    Square blackKingPosition = 0;
 
     operator std::string() const
     {

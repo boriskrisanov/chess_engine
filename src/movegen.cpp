@@ -196,6 +196,36 @@ namespace movegen
 
     const auto KING_RAYS = precomputeKingRays();
 
+    array<array<Bitboard, 64>, 64> computeSquaresBetweenSquares()
+    {
+        array<array<Bitboard, 64>, 64> s{};
+        for (Square i = 0; i < 64; i++)
+        {
+            for (const auto [rayBitboard, direction] : KING_RAYS[i])
+            {
+                for (Square j = 0; j < edgeDistanceInDirection(i, direction); j++)
+                {
+                    if (i == 4 && direction == Direction::DOWN_RIGHT)
+                    {
+                        int x;
+                    }
+                    const int offset = static_cast<int>(direction);
+                    const Square targetSquare = i + offset * (j + 1);
+                    Square k = i;
+                    while (k != targetSquare)
+                    {
+                        k += offset;
+                        s[i][targetSquare] |= bitboards::withSquare(k);
+                    }
+                    s[i][j] |= bitboards::withSquare(targetSquare);
+                }
+            }
+        }
+        return s;
+    }
+
+    const array<array<Bitboard, 64>, 64> squaresBetweenSquares = computeSquaresBetweenSquares();
+
     vector<Bitboard> possibleBlockerPositions(Bitboard blockerMask)
     {
         vector<Bitboard> configurations{};
@@ -402,7 +432,7 @@ namespace movegen
         using enum Direction;
 
         Bitboard squares = 0;
-        Square kingPos = board.sideToMove == WHITE ? board.whiteKingPosition : board.blackKingPosition;
+        const Square kingPos = bitboards::getMSB(board.bitboards[Piece{PieceKind::KING, board.sideToMove}.index()]);
 
         // Sliding pieces
         // TODO: Use bitboards
@@ -547,93 +577,51 @@ namespace movegen
         return squares;
     }
 
-    Bitboard pinnedPieces;
-    // Not the most efficient, but fine for now
     array<Bitboard, 64> pinLines{};
-
     void computePinLines(const Board& board, PieceColor side)
     {
         using enum Direction;
-        pinnedPieces = 0;
-        pinLines = array<Bitboard, 64>{};
 
-        int kingPosition = side == WHITE ? board.whiteKingPosition : board.blackKingPosition;
+        pinLines.fill(bitboards::ALL_SQUARES);
 
-        for (const auto [rayBitboard, direction] : KING_RAYS[kingPosition])
+        const Bitboard king = board.bitboards[Piece{PieceKind::KING, side}.index()];
+        const Bitboard enemyRooks = board.bitboards[Piece{PieceKind::ROOK, oppositeColor(side)}.index()];
+        const Bitboard enemyBishops = board.bitboards[Piece{PieceKind::BISHOP, oppositeColor(side)}.index()];
+        const Bitboard enemyQueens = board.bitboards[Piece{PieceKind::QUEEN, oppositeColor(side)}.index()];
+        const Square kingPos = bitboards::getMSB(king);
+
+        for (const auto [rayBitboard, direction] : KING_RAYS[kingPos])
         {
-            if ((rayBitboard & board.getSlidingPieces(oppositeColor(side))) == 0)
+            const Bitboard orthogonalSliders = rayBitboard & (enemyRooks | enemyQueens);
+            const Bitboard diagonalSliders = rayBitboard & (enemyBishops | enemyQueens);
+            const Bitboard possibleAttackers = (direction == UP || direction == DOWN || direction == LEFT || direction
+                                                   == RIGHT)
+                                                   ? orthogonalSliders
+                                                   : diagonalSliders;
+            if (possibleAttackers == 0)
             {
-                // No enemy sliding pieces on this diagonal, so no pieces on it can be pinned
+                // Cannot be pinned on this ray
                 continue;
             }
-
-            Piece lastFriendlyPieceSeen{};
-            Square lastFriendlyPiecePos = 0;
-
-            Bitboard pinSquares = 0;
-            for (int i = 0; i < edgeDistanceInDirection(kingPosition, direction); i++)
+            // If there are multiple attackers, the one we use doesn't matter since we can't move past the first one
+            const Square attackerPos = bitboards::getMSB(possibleAttackers);
+            Bitboard piecesBetweenKingAndAttacker = squaresBetweenSquares[kingPos][attackerPos] & board.getPieces() & ~bitboards::withSquare(attackerPos);
+            if (std::popcount(piecesBetweenKingAndAttacker) == 0)
             {
-                const Square targetSquare = kingPosition + static_cast<int>(direction) * (i + 1);
-
-                const bool kingCanBeAttackedByRook = direction == UP || direction == DOWN || direction == LEFT ||
-                    direction
-                    == RIGHT;
-                const bool kingCanBeAttackedByBishop = direction == UP_LEFT || direction == UP_RIGHT || direction ==
-                    DOWN_LEFT || direction == DOWN_RIGHT;
-                const bool targetPieceCanAttackKing = board[targetSquare].kind() == PieceKind::QUEEN || (board[
-                        targetSquare]
-                    .
-                    kind() == PieceKind::ROOK && kingCanBeAttackedByRook) || (board[targetSquare].kind() ==
-                    PieceKind::BISHOP &&
-                    kingCanBeAttackedByBishop);
-
-                if (board[targetSquare].isNone())
+                // In check from this direction
+                continue;
+            }
+            if (std::popcount(piecesBetweenKingAndAttacker) == 1)
+            {
+                Bitboard friendlyIntersectingPiece = piecesBetweenKingAndAttacker & board.getPieces(side);
+                if (friendlyIntersectingPiece != 0)
                 {
-                    pinSquares |= bitboards::withSquare(targetSquare);
-                    continue;
-                }
-
-                if (!targetPieceCanAttackKing && board[targetSquare].color() == oppositeColor(side) &&
-                    lastFriendlyPieceSeen
-                    .
-                    isNone())
-                {
-                    // Not in check from this direction
-                    break;
-                }
-
-                if (board[targetSquare].isSlidingPiece() && board[targetSquare].color() != side
-                    && (((direction == UP || direction == DOWN || direction == LEFT || direction == RIGHT) && (board[
-                            targetSquare].kind() == PieceKind::ROOK || board[targetSquare].kind() == PieceKind::QUEEN))
-                        || ((direction == UP_LEFT || direction == UP_RIGHT || direction == DOWN_LEFT || direction ==
-                            DOWN_RIGHT) && (board[targetSquare].kind() == PieceKind::BISHOP || board[targetSquare].
-                            kind() ==
-                            PieceKind::QUEEN)))
-                )
-                {
-                    if (lastFriendlyPieceSeen.isNone())
-                    {
-                        // King is in check from this direction
-                        break;
-                    }
-
-                    pinSquares |= bitboards::withSquare(targetSquare);
-                    pinLines[lastFriendlyPiecePos] = pinSquares;
-                    pinnedPieces |= bitboards::withSquare(lastFriendlyPiecePos);
-                    break;
-                }
-                if (!lastFriendlyPieceSeen.isNone() && !board[targetSquare].isNone())
-                {
-                    // There are more than 2 pieces in front of the king, therefore none of them are pinned
-                    break;
-                }
-                if (board[targetSquare].color() == side)
-                {
-                    lastFriendlyPieceSeen = board[targetSquare];
-                    lastFriendlyPiecePos = targetSquare;
-                    pinSquares |= bitboards::withSquare(targetSquare);
+                    // Piece is pinned
+                    // pinnedPieces |= bitboards::getMSB(friendlyIntersectingPiece);
+                    pinLines[bitboards::getMSB(friendlyIntersectingPiece)] = piecesBetweenKingAndAttacker & bitboards::withSquare(attackerPos);
                 }
             }
+            // More than 2 pieces between attacker and king, not pinned pieces on this ray
         }
     }
 
@@ -671,10 +659,8 @@ namespace movegen
         {
             Square i = bitboards::popMSB(singlePushes);
             const Square start = i + 8 * direction;
-            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
             const Bitboard targetBitboard = bitboards::withSquare(i);
-            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
             {
                 moves.emplace_back(start, i, MoveFlag::None);
             }
@@ -683,10 +669,8 @@ namespace movegen
         {
             Square i = bitboards::popMSB(doublePushes);
             const Square start = i + 16 * direction;
-            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
             const Bitboard targetBitboard = bitboards::withSquare(i);
-            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
             {
                 moves.emplace_back(start, i, MoveFlag::None);
             }
@@ -697,10 +681,8 @@ namespace movegen
         {
             Square i = bitboards::popMSB(leftCaptures);
             const Square start = i + (side == WHITE ? 9 : 7) * direction;
-            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
             const Bitboard targetBitboard = bitboards::withSquare(i);
-            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
             {
                 moves.emplace_back(start, i, MoveFlag::None);
             }
@@ -709,10 +691,8 @@ namespace movegen
         {
             Square i = bitboards::popMSB(rightCaptures);
             const Square start = i + (side == WHITE ? 7 : 9) * direction;
-            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
             const Bitboard targetBitboard = bitboards::withSquare(i);
-            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
             {
                 moves.emplace_back(start, i, MoveFlag::None);
             }
@@ -723,10 +703,8 @@ namespace movegen
         {
             Square i = bitboards::popMSB(singlePushesWithPromotion);
             const Square start = i + 8 * direction;
-            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
             const Bitboard targetBitboard = bitboards::withSquare(i);
-            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
             {
                 moves.emplace_back(start, i, MoveFlag::PromotionQueen);
                 moves.emplace_back(start, i, MoveFlag::PromotionRook);
@@ -738,10 +716,8 @@ namespace movegen
         {
             Square i = bitboards::popMSB(leftCapturesWithPromotion);
             const Square start = i + (side == WHITE ? 9 : 7) * direction;
-            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
             const Bitboard targetBitboard = bitboards::withSquare(i);
-            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
             {
                 moves.emplace_back(start, i, MoveFlag::PromotionQueen);
                 moves.emplace_back(start, i, MoveFlag::PromotionRook);
@@ -753,10 +729,8 @@ namespace movegen
         {
             Square i = bitboards::popMSB(rightCapturesWithPromotion);
             const Square start = i + (side == WHITE ? 7 : 9) * direction;
-            const bool isPinned = (bitboards::withSquare(start) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[start] : bitboards::ALL_SQUARES;
             const Bitboard targetBitboard = bitboards::withSquare(i);
-            if ((checkResolutions & targetBitboard) != 0 && (pinLine & targetBitboard) != 0)
+            if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
             {
                 moves.emplace_back(start, i, MoveFlag::PromotionQueen);
                 moves.emplace_back(start, i, MoveFlag::PromotionRook);
@@ -766,7 +740,7 @@ namespace movegen
         }
 
         // En Passant
-        const Square ep = board.getEnPassantTargetSquare();
+        const uint8_t ep = board.getEnPassantTargetSquare();
         if (ep != -1)
         [[unlikely]]
         {
@@ -812,12 +786,10 @@ namespace movegen
         {
             const Square i = bitboards::popMSB(knights);
             Bitboard attackingSquares = knightAttackingSquares[i];
-            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
 
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
-            attackingSquares &= pinLine & checkResolutions;
+            attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
                 Square end = bitboards::popMSB(attackingSquares);
@@ -838,12 +810,9 @@ namespace movegen
             const Bitboard blockers = board.getPieces() & BISHOP_BLOCKER_MASKS[i];
             Bitboard attackingSquares = BISHOP_ATTACKING_SQUARES[i][blockers * BISHOP_MAGICS[i] >> BISHOP_SHIFTS[i]];
 
-            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
-
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
-            attackingSquares &= pinLine & checkResolutions;
+            attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
                 Square end = bitboards::popMSB(attackingSquares);
@@ -864,12 +833,9 @@ namespace movegen
             const Bitboard blockers = board.getPieces() & ROOK_BLOCKER_MASKS[i];
             Bitboard attackingSquares = ROOK_ATTACKING_SQUARES[i][blockers * ROOK_MAGICS[i] >> ROOK_SHIFTS[i]];
 
-            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
-
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
-            attackingSquares &= pinLine & checkResolutions;
+            attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
                 Square end = bitboards::popMSB(attackingSquares);
@@ -895,12 +861,9 @@ namespace movegen
                 i]) >> BISHOP_SHIFTS[i]];
             Bitboard attackingSquares = horizontalSquares | diagonalSquares;
 
-            const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
-            const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
-
             // Ignore squares that are occupied by friendly pieces
             attackingSquares &= ~board.getPieces(side);
-            attackingSquares &= pinLine & checkResolutions;
+            attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
                 Square end = bitboards::popMSB(attackingSquares);
@@ -916,9 +879,7 @@ namespace movegen
         Square i = bitboards::popMSB(king);
         Bitboard attackingSquares = kingAttackingSquares[i];
         attackingSquares &= ~board.getPieces(side);
-        const bool isPinned = (bitboards::withSquare(i) & pinnedPieces) != 0;
-        const Bitboard pinLine = isPinned ? pinLines[i] : bitboards::ALL_SQUARES;
-        attackingSquares &= pinLine;
+        attackingSquares &= pinLines[i];
 
         const Bitboard opponentAttackingSquares = board.getAttackingSquares(oppositeColor(side));
         // Prevent the king from moving into check
@@ -1019,10 +980,9 @@ namespace movegen
     MoveList generateLegalMoves(Board& board)
     {
         MoveList moves;
-        // TODO: Improve architecture and minimise use of globals
-        // Computed by checkResolutionSquares()
         isRayCheck = false;
         rayCheckDirections.clear();
+
         const PieceColor sideToMove = board.sideToMove;
         // Squares to which a piece other than the king can move to block a check
         const Bitboard checkResolutions = board.isSideInCheck(sideToMove)

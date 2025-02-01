@@ -28,10 +28,10 @@ void Board::loadFen(string fen)
     // TODO: Allow FEN strings with only some information
     //  (Only placement info is needed, everything else can be set to default)
     string placement = splitString(fen, " ")[0];
-    string sideToMove = splitString(fen, " ")[1];
-    string castling = splitString(fen, " ")[2];
-    string enPassantTargetSquare = splitString(fen, " ")[3];
-    string halfMoveClock = splitString(fen, " ")[4];
+    const string sideToMove = splitString(fen, " ")[1];
+    const string castling = splitString(fen, " ")[2];
+    const string enPassantTargetSquare = splitString(fen, " ")[3];
+    const string halfMoveClock = splitString(fen, " ")[4];
     string fullMoveNumber = splitString(fen, " ")[5];
 
     placement = std::regex_replace(placement, std::regex("/"), "");
@@ -48,14 +48,6 @@ void Board::loadFen(string fen)
         else
         {
             board[i] = Piece{c};
-            if (c == 'K')
-            {
-                whiteKingPosition = i;
-            }
-            else if (c == 'k')
-            {
-                blackKingPosition = i;
-            }
             addPiece(board[i], i);
         }
         i++;
@@ -173,18 +165,6 @@ void Board::makeMove(Move move)
     else
     {
         capturedPiece = board[sideToMove == WHITE ? move.end() + 8 : move.end() - 8];
-    }
-
-    if (movedPiece.kind() == PieceKind::KING)
-    {
-        if (sideToMove == WHITE)
-        {
-            whiteKingPosition = move.end();
-        }
-        else
-        {
-            blackKingPosition = move.end();
-        }
     }
 
     move.capturedPiece = capturedPiece;
@@ -443,18 +423,6 @@ void Board::unmakeMove()
                                  ? Piece{PieceKind::PAWN, oppositeColor(sideToMove)}
                                  : board[move.end()];
 
-    if (movedPiece.kind() == PieceKind::KING)
-    {
-        if (movedPiece.color() == WHITE)
-        {
-            whiteKingPosition = move.start();
-        }
-        else
-        {
-            blackKingPosition = move.start();
-        }
-    }
-
     // Undo castling
     if (move.moveFlag() == MoveFlag::ShortCastling)
     {
@@ -698,7 +666,7 @@ void Board::updateAttackingSquares()
 std::array<uint64_t, 12 * 64 + 1 + 4 + 8> generateRandomValues()
 {
     std::array<uint64_t, 12 * 64 + 1 + 4 + 8> values{};
-    std::mt19937 rng;
+    std::mt19937 rng; // NOLINT(*-msc51-cpp)
     std::uniform_int_distribution<uint64_t> uniformIntDistribution;
 
     for (uint64_t& value : values)
