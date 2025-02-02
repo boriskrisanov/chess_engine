@@ -155,7 +155,8 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     }
 
     const TT_Entry* ttEntry = getTransposition(board.getHash());
-    if (ttEntry != nullptr)
+    // TODO: Correct mate eval for depth
+    if (ttEntry != nullptr && abs(ttEntry->eval) < POSITIVE_INFINITY - 255)
     {
         if (ttEntry->depth >= depth)
         {
