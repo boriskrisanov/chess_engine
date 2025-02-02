@@ -527,7 +527,7 @@ MoveList Board::getLegalMoves()
 MoveList Board::getLegalCaptures()
 {
     MoveList captures{};
-    for (Move move : movegen::generateLegalMoves(*this))
+    for (Move move : getLegalMoves())
     {
         if (!board[move.end()].isNone() || move.moveFlag() == MoveFlag::EnPassant)
         {
