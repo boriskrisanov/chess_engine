@@ -28,7 +28,7 @@ class Board
 {
 public:
     std::array<Bitboard, 14> bitboards{};
-    void loadFen(std::string fen);
+    void loadFen(const std::string& fen);
     std::string getFen() const;
     std::string getPgn();
     void makeMove(Move move);

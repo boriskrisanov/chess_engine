@@ -54,7 +54,7 @@ else ()
 endif ()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "-fconstexpr-steps=10000000")
+    set(CMAKE_CXX_FLAGS "-fconstexpr-steps=10000000 -march=native")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "/constexpr:steps10000000 /EHsc")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /Ob3 /Oi /arch:AVX2 /GL")

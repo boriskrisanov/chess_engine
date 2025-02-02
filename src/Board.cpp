@@ -11,7 +11,7 @@ using std::string;
 using enum PieceKind;
 using enum PieceColor;
 
-void Board::loadFen(string fen)
+void Board::loadFen(const string& fen)
 {
     hashHistory = {};
     for (int i = 0; i < 64; i++)
@@ -115,7 +115,23 @@ string Board::getFen() const
     }
 
     fen.append(sideToMove == WHITE ? " w " : " b ");
-    fen.append("KQkq "); // TODO: castling rights
+    if (whiteCanShortCastle)
+    {
+        fen.append("K");
+    }
+    if (whiteCanLongCastle)
+    {
+        fen.append("Q");
+    }
+    if (blackCanShortCastle)
+    {
+        fen.append("k");
+    }
+    if (blackCanLongCastle)
+    {
+        fen.append("q");
+    }
+    fen.append(" ");
     fen.append(enPassantTargetSquare == -1 ? "-" : square::toString(enPassantTargetSquare));
     fen.append(" ").append(std::to_string(halfMoveClock));
     fen.append(" ").append(std::to_string(moveHistory.size()));

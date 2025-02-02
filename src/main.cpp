@@ -12,7 +12,7 @@ int main()
     Board board;
     board.loadFen(STARTING_POSITION_FEN);
     // runTests();
-    board.loadFen("7r/p4k1P/2p2P2/6p1/1n6/1Pp1N1P1/r7/1KBR3R b - - 1 34");
+    // board.loadFen("7r/p4k1P/2p2P2/6p1/1n6/1Pp1N1P1/r7/1KBR3R b - - 1 34");
     while (true)
     {
         string command;
@@ -21,31 +21,35 @@ int main()
         {
             string mode;
             std::cin >> mode;
+            string remainingCommand;
             if (mode == "fen")
             {
                 string fen;
                 std::getline(cin, fen);
                 // Remove leading space
                 fen = fen.erase(0, 1);
+                if (fen.contains(" moves "))
+                {
+                    remainingCommand = splitString(fen, " moves ")[1];
+                    fen = splitString(fen, " moves ")[0];
+                }
                 board.loadFen(fen);
             }
             else if (mode == "startpos")
             {
                 board.loadFen(STARTING_POSITION_FEN);
-                string remainingCommand;
                 std::getline(cin, remainingCommand);
-                if (remainingCommand.starts_with(" moves "))
+            }
+            if (!remainingCommand.empty())
+            {
+                // Move list
+                for (const std::string& move : splitString(remainingCommand, " "))
                 {
-                    // Start from 7 to ignore the space at the beginning and after "moves"
-                    string moves = remainingCommand.substr(7, remainingCommand.length() - 1);
-                    for (const std::string& move : splitString(moves, " "))
+                    if (move.empty() || move.contains(" "))
                     {
-                        if (move.empty() || move.contains(" "))
-                        {
-                            continue;
-                        }
-                        board.makeMove(Move{board, move});
+                        continue;
                     }
+                    board.makeMove(Move{board, move});
                 }
             }
         }

@@ -26,6 +26,11 @@ namespace bitboards
         return std::countl_zero(bitboard);
     }
 
+    inline Square getLSB(Bitboard bitboard)
+    {
+        return 63 - std::countr_zero(bitboard);
+    }
+
     std::vector<Square> squaresOf(Bitboard bitboard);
     constexpr Bitboard ALL_SQUARES = 0xFFFFFFFFFFFFFFFF;
     constexpr Bitboard RANK_1 = 0x00000000000000FF;

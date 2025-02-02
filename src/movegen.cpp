@@ -205,19 +205,19 @@ namespace movegen
             {
                 for (Square j = 0; j < edgeDistanceInDirection(i, direction); j++)
                 {
-                    if (i == 4 && direction == Direction::DOWN_RIGHT)
-                    {
-                        int x;
-                    }
                     const int offset = static_cast<int>(direction);
                     const Square targetSquare = i + offset * (j + 1);
-                    Square k = i;
+                    // if (i == 4 && direction == Direction::LEFT && targetSquare == 2)
+                    // {
+                    //     int x;
+                    // }
+                    Square k = i + offset;
                     while (k != targetSquare)
                     {
-                        k += offset;
                         s[i][targetSquare] |= bitboards::withSquare(k);
+                        k += offset;
                     }
-                    s[i][j] |= bitboards::withSquare(targetSquare);
+                    // s[i][targetSquare] |= bitboards::withSquare(targetSquare);
                 }
             }
         }
@@ -603,9 +603,9 @@ namespace movegen
                 // Cannot be pinned on this ray
                 continue;
             }
-            // If there are multiple attackers, the one we use doesn't matter since we can't move past the first one
-            const Square attackerPos = bitboards::getMSB(possibleAttackers);
-            Bitboard piecesBetweenKingAndAttacker = squaresBetweenSquares[kingPos][attackerPos] & board.getPieces() & ~bitboards::withSquare(attackerPos);
+            // Get the first attacker along this direction. If the index of the attacker is less than the king, this will be the least significant bit. If it is greater, this will be the most significant bit.
+            const Square attackerPos = (direction == UP || direction == LEFT || direction == UP_LEFT || direction == UP_RIGHT) ? bitboards::getLSB(possibleAttackers) : bitboards::getMSB(possibleAttackers);
+            Bitboard piecesBetweenKingAndAttacker = squaresBetweenSquares[kingPos][attackerPos] & board.getPieces() & ~possibleAttackers;
             if (std::popcount(piecesBetweenKingAndAttacker) == 0)
             {
                 // In check from this direction
@@ -617,8 +617,7 @@ namespace movegen
                 if (friendlyIntersectingPiece != 0)
                 {
                     // Piece is pinned
-                    // pinnedPieces |= bitboards::getMSB(friendlyIntersectingPiece);
-                    pinLines[bitboards::getMSB(friendlyIntersectingPiece)] = piecesBetweenKingAndAttacker & bitboards::withSquare(attackerPos);
+                    pinLines[bitboards::getMSB(friendlyIntersectingPiece)] = squaresBetweenSquares[kingPos][attackerPos] | bitboards::withSquare(attackerPos);
                 }
             }
             // More than 2 pieces between attacker and king, not pinned pieces on this ray
@@ -740,7 +739,7 @@ namespace movegen
         }
 
         // En Passant
-        const uint8_t ep = board.getEnPassantTargetSquare();
+        const int8_t ep = board.getEnPassantTargetSquare();
         if (ep != -1)
         [[unlikely]]
         {
