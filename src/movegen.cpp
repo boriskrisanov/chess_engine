@@ -768,7 +768,7 @@ namespace movegen
                 board.unmakeMove();
                 if (!enPassantPossible)
                 {
-                    break;
+                    continue;
                 }
 
                 moves.emplace_back(i, ep, MoveFlag::EnPassant);
