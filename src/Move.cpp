@@ -8,14 +8,14 @@ Move::Move(Square start, Square end, MoveFlag flag)
     moveData |= static_cast<uint8_t>(flag);
 }
 
-Move::Move(const Board& board, std::string uciString)
+Move::Move(const Board& board, const std::string& uciString)
 {
     if (uciString.length() != 4 && uciString.length() != 5)
     {
         std::exit(1);
     }
-    Square start = square::fromString(std::string{uciString.at(0)} + uciString.at(1));
-    Square end = square::fromString(std::string{uciString.at(2)} + uciString.at(3));
+    const Square start = square::fromString(std::string{uciString.at(0)} + uciString.at(1));
+    const Square end = square::fromString(std::string{uciString.at(2)} + uciString.at(3));
     MoveFlag moveFlag = MoveFlag::None;
     // En Passant
     if (board[start].kind() == PieceKind::PAWN && end == board.getEnPassantTargetSquare())

@@ -24,6 +24,10 @@ struct BoardState
     uint8_t halfMoveClock;
 };
 
+
+/**
+ * Represents a full game (including previous states), including piece positions, side to move, castling rights, etc
+ */
 class Board
 {
 public:
@@ -32,11 +36,10 @@ public:
     std::string getFen() const;
     std::string getPgn();
     void makeMove(Move move);
-    void makeMove(std::string uciMove);
+    void makeMove(const std::string& uciMove);
     void unmakeMove();
     MoveList getLegalMoves();
     MoveList getLegalCaptures();
-    void getPseudoLegalMoves(std::vector<Move>& moves) const;
     bool isSideInCheckAfterMove(Move move, PieceColor side);
     bool isPseudoLegalMoveLegal(Move move);
     std::string toString() const;
@@ -46,7 +49,7 @@ public:
 
     PieceColor sideToMove = PieceColor::WHITE;
 
-    operator std::string() const
+    explicit operator std::string() const
     {
         return toString();
     }
@@ -78,10 +81,10 @@ public:
 
     bool isSideInCheck(PieceColor side) const
     {
-        Bitboard kingBitboard = side == PieceColor::WHITE
+        const Bitboard kingBitboard = side == PieceColor::WHITE
                                     ? bitboards[Piece{PieceKind::KING, PieceColor::WHITE}.index()]
                                     : bitboards[Piece{PieceKind::KING, PieceColor::BLACK}.index()];
-        Bitboard squaresAttackedBySide = getAttackingSquares(oppositeColor(side));
+        const Bitboard squaresAttackedBySide = getAttackingSquares(oppositeColor(side));
         return (squaresAttackedBySide & kingBitboard) != 0;
     }
 

@@ -41,7 +41,7 @@ inline size_t perft(Board& board, uint8_t depth, bool rootNode = true)
     return positionsReached;
 }
 
-inline size_t runPerft(uint8_t depth, std::string fen, std::string moveSequence)
+inline size_t runPerft(uint8_t depth, const std::string& fen, const std::string& moveSequence)
 {
     Board board;
     board.loadFen(fen);
@@ -71,12 +71,12 @@ inline size_t runPerft(uint8_t depth, std::string fen, std::string moveSequence)
     return total;
 }
 
-inline void runPerft(uint8_t depth, std::string fen)
+inline void runPerft(uint8_t depth, const std::string& fen)
 {
     runPerft(depth, fen, "");
 }
 
-inline void test(uint8_t depth, std::string fen, size_t expectedValue)
+inline void test(uint8_t depth, const std::string& fen, size_t expectedValue)
 {
     Board board;
     board.loadFen(fen);

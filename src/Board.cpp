@@ -2,6 +2,7 @@
 
 #include <random>
 #include <regex>
+#include <unordered_map>
 
 #include "movegen.hpp"
 #include "utils.hpp"
@@ -38,11 +39,11 @@ void Board::loadFen(const string& fen)
 
     int i = 0;
 
-    for (char c : placement)
+    for (const char c : placement)
     {
         if (isdigit(c))
         {
-            int n = atoi(string{c}.c_str());
+            const int n = atoi(string{c}.c_str());
             i += n - 1;
         }
         else
@@ -64,7 +65,7 @@ void Board::loadFen(const string& fen)
     }
     else
     {
-        this->enPassantTargetSquare = square::fromString(enPassantTargetSquare);
+        this->enPassantTargetSquare = static_cast<int8_t>(square::fromString(enPassantTargetSquare));
     }
 
     this->sideToMove = sideToMove == "w" ? WHITE : BLACK;
@@ -139,29 +140,6 @@ string Board::getFen() const
     return fen;
 }
 
-std::string Board::getPgn()
-{
-    /*
-     This works by first creating a new board from the starting position and then playing each move in the
-     reversed move history. This allows us to simply look at the piece that was on the board at that time
-     to determine its type, rather than storing that information in the move. This method is rarely called, so
-     performance isn't a concern.
-    */
-
-    std::string s;
-    std::vector<Move> reverseMoveHistory;
-    std::ranges::reverse_copy(moveHistory, reverseMoveHistory.begin());
-    Board board2;
-    int moveCount = 1;
-
-    for (Move move : reverseMoveHistory)
-    {
-
-    }
-
-    return s;
-}
-
 
 void Board::makeMove(Move move)
 {
@@ -171,7 +149,7 @@ void Board::makeMove(Move move)
         halfMoveClock
     });
 
-    Piece movedPiece = board[move.start()];
+    const Piece movedPiece = board[move.start()];
     Piece capturedPiece;
     if (move.moveFlag() != MoveFlag::EnPassant)
     [[likely]]
@@ -186,7 +164,7 @@ void Board::makeMove(Move move)
     move.capturedPiece = capturedPiece;
     moveHistory.push_back(move);
 
-    if (capturedPiece.isNone() && movedPiece.kind() != PieceKind::PAWN)
+    if (capturedPiece.isNone() && movedPiece.kind() != PAWN)
     {
         halfMoveClock++;
     }
@@ -205,11 +183,11 @@ void Board::makeMove(Move move)
         // Set the en passant target square if a pawn moved 2 squares forward
         if (move.end() == move.start() - 8 * 2)
         {
-            enPassantTargetSquare = move.start() - 8;
+            enPassantTargetSquare = static_cast<int8_t>(move.start() - 8);
         }
         else if (move.end() == move.start() + 8 * 2)
         {
-            enPassantTargetSquare = move.start() + 8;
+            enPassantTargetSquare = static_cast<int8_t>(move.start() + 8);
         }
     }
 
@@ -223,7 +201,7 @@ void Board::makeMove(Move move)
             if (move.moveFlag() == MoveFlag::ShortCastling)
             {
                 const Square rookPosition = movedPiece.color() == WHITE ? 63 : 7;
-                Piece rook = board[rookPosition];
+                const Piece rook = board[rookPosition];
                 board[rookPosition] = Piece{};
                 board[move.end() - 1] = rook;
                 movePiece(rook, Piece{}, rookPosition, move.end() - 1);
@@ -231,7 +209,7 @@ void Board::makeMove(Move move)
             else if (move.moveFlag() == MoveFlag::LongCastling)
             {
                 const Square rookPosition = movedPiece.color() == WHITE ? 56 : 0;
-                Piece rook = board[rookPosition];
+                const Piece rook = board[rookPosition];
                 board[rookPosition] = Piece{};
                 board[move.end() + 1] = rook;
                 movePiece(rook, Piece{}, rookPosition, move.end() + 1);
@@ -327,13 +305,13 @@ void Board::makeMove(Move move)
         switch (move.moveFlag())
         {
         case MoveFlag::PromotionKnight:
-            board[move.end()] = Piece{PieceKind::KNIGHT, sideToMove};
+            board[move.end()] = Piece{KNIGHT, sideToMove};
             break;
         case MoveFlag::PromotionBishop:
-            board[move.end()] = Piece{PieceKind::BISHOP, sideToMove};
+            board[move.end()] = Piece{BISHOP, sideToMove};
             break;
         case MoveFlag::PromotionRook:
-            board[move.end()] = Piece{PieceKind::ROOK, sideToMove};
+            board[move.end()] = Piece{ROOK, sideToMove};
             break;
         case MoveFlag::PromotionQueen:
             board[move.end()] = Piece{PieceKind::QUEEN, sideToMove};
@@ -357,7 +335,7 @@ void Board::makeMove(Move move)
     hashHistory.push(newHash);
 }
 
-void Board::makeMove(std::string uciMove)
+void Board::makeMove(const std::string& uciMove)
 {
     // TODO: This doesn't handle en passant (?)
     if (uciMove.length() != 4 && uciMove.length() != 5)
@@ -365,28 +343,34 @@ void Board::makeMove(std::string uciMove)
         throw std::runtime_error{"Invalid move " + uciMove};
     }
 
-    Square start = square::fromString(std::string{uciMove.at(0)} + uciMove.at(1));
-    Square destination = square::fromString(std::string{uciMove.at(2)} + uciMove.at(3));
+    const Square start = square::fromString(std::string{uciMove.at(0)} + uciMove.at(1));
+    const Square destination = square::fromString(std::string{uciMove.at(2)} + uciMove.at(3));
 
-    MoveFlag moveFlag = MoveFlag::None;
+    auto moveFlag = MoveFlag::None;
 
-    if (board[start].kind() == PieceKind::KING)
+    if (board[start].kind() == KING)
     {
-        if (board[start].color() == BLACK && destination == 6 && blackCanShortCastle)
+        if (board[start].color() == BLACK)
         {
-            moveFlag = MoveFlag::ShortCastling;
+            if (destination == 6 && blackCanShortCastle)
+            {
+                moveFlag = MoveFlag::ShortCastling;
+            }
+            else if (destination == 1 && blackCanLongCastle)
+            {
+                moveFlag = MoveFlag::LongCastling;
+            }
         }
-        else if (board[start].color() == BLACK && destination == 1 && blackCanLongCastle)
+        else
         {
-            moveFlag = MoveFlag::LongCastling;
-        }
-        else if (board[start].color() == WHITE && destination == 62 && whiteCanShortCastle)
-        {
-            moveFlag = MoveFlag::ShortCastling;
-        }
-        else if (board[start].color() == WHITE && destination == 58 && whiteCanLongCastle)
-        {
-            moveFlag = MoveFlag::LongCastling;
+            if (destination == 62 && whiteCanShortCastle)
+            {
+                moveFlag = MoveFlag::ShortCastling;
+            }
+            else if (destination == 58 && whiteCanLongCastle)
+            {
+                moveFlag = MoveFlag::LongCastling;
+            }
         }
     }
 
@@ -436,7 +420,7 @@ void Board::unmakeMove()
     // If this was a promotion, the piece at the destination square (movedPiece) would be the piece that the pawn
     // promoted to, rather than the pawn itself, which is why this special case is needed.
     const Piece movedPiece = move.isPromotion()
-                                 ? Piece{PieceKind::PAWN, oppositeColor(sideToMove)}
+                                 ? Piece{PAWN, oppositeColor(sideToMove)}
                                  : board[move.end()];
 
     // Undo castling
@@ -444,14 +428,14 @@ void Board::unmakeMove()
     {
         if (movedPiece.color() == WHITE)
         {
-            Piece rook = board[61];
+            const Piece rook = board[61];
             board[61] = Piece{};
             board[63] = rook;
             movePiece(rook, Piece{}, 61, 63);
         }
         else
         {
-            Piece rook = board[5];
+            const Piece rook = board[5];
             board[5] = Piece{};
             board[7] = rook;
             movePiece(rook, Piece{}, 5, 7);
@@ -461,14 +445,14 @@ void Board::unmakeMove()
     {
         if (movedPiece.color() == WHITE)
         {
-            Piece rook = board[59];
+            const Piece rook = board[59];
             board[59] = Piece{};
             board[56] = rook;
             movePiece(rook, Piece{}, 59, 56);
         }
         else
         {
-            Piece rook = board[3];
+            const Piece rook = board[3];
             board[3] = Piece{};
             board[0] = rook;
             movePiece(rook, Piece{}, 3, 0);
@@ -495,14 +479,14 @@ void Board::unmakeMove()
             {
                 // Black is the side that made the move
                 // If the move is an en passant capture, the captured piece must be a pawn
-                board[move.end() - 8] = Piece{PieceKind::PAWN, WHITE};
+                board[move.end() - 8] = Piece{PAWN, WHITE};
                 bitboards[pieceIndexes::WHITE_PAWN] |= bitboards::withSquare(move.end() - 8);
             }
             else
             {
                 // White is the side that made the move
                 // If the move is an en passant capture, the captured piece must be a pawn
-                board[move.end() + 8] = Piece{PieceKind::PAWN, BLACK};
+                board[move.end() + 8] = Piece{PAWN, BLACK};
                 bitboards[pieceIndexes::BLACK_PAWN] |= bitboards::withSquare(move.end() + 8);
             }
         }
@@ -600,8 +584,10 @@ std::string Board::uciMoveHistory() const
 Bitboard Board::getSlidingPieces(PieceColor side) const
 {
     return side == WHITE
-               ? bitboards[pieceIndexes::WHITE_BISHOP] | bitboards[pieceIndexes::WHITE_ROOK] | bitboards[pieceIndexes::WHITE_QUEEN]
-               : bitboards[pieceIndexes::BLACK_BISHOP] | bitboards[pieceIndexes::BLACK_ROOK] | bitboards[pieceIndexes::BLACK_QUEEN];
+               ? bitboards[pieceIndexes::WHITE_BISHOP] | bitboards[pieceIndexes::WHITE_ROOK] | bitboards[
+                   pieceIndexes::WHITE_QUEEN]
+               : bitboards[pieceIndexes::BLACK_BISHOP] | bitboards[pieceIndexes::BLACK_ROOK] | bitboards[
+                   pieceIndexes::BLACK_QUEEN];
 }
 
 bool Board::isStalemate()
@@ -647,7 +633,19 @@ bool Board::isInsufficientMaterial() const
 
 bool Board::isThreefoldRepetition()
 {
-    // TODO
+    // TODO: There is probably a more efficient way of doing this (update incrementally in make/unmake move?)
+    std::unordered_map<uint64_t, uint8_t> repetitions;
+    repetitions.reserve(hashHistory.size());
+    for (uint64_t hash : hashHistory) {
+        if (repetitions.contains(hash)) {
+            repetitions[hash]++;
+        } else {
+            repetitions[hash] = 1;
+        }
+        if (repetitions[hash] >= 3) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -697,16 +695,19 @@ const std::array<uint64_t, 12 * 64 + 1 + 4 + 8> randomValues = generateRandomVal
 
 uint64_t randomValueForPiece(Piece piece, Square position)
 {
-    uint8_t pieceIndex = static_cast<uint8_t>(piece.kind());
+    auto pieceIndex = static_cast<uint8_t>(piece.kind());
 
     if (piece.color() == BLACK)
     {
         pieceIndex += 6;
     }
 
-    return randomValues[(pieceIndex * 64) + position];
+    return randomValues[pieceIndex * 64 + position];
 }
 
+/**
+ * Computes the Zobrist hash of the current board state
+ */
 uint64_t Board::hash() const
 {
     uint64_t result = 0;
@@ -721,40 +722,40 @@ uint64_t Board::hash() const
 
     if (sideToMove == BLACK)
     {
-        result ^= randomValues[(11 * 64) + 63 + 1];
+        result ^= randomValues[11 * 64 + 63 + 1];
     }
 
     if (whiteCanShortCastle)
     {
-        result ^= randomValues[(11 * 64) + 63 + 2];
+        result ^= randomValues[11 * 64 + 63 + 2];
     }
     if (whiteCanLongCastle)
     {
-        result ^= randomValues[(11 * 64) + 63 + 3];
+        result ^= randomValues[11 * 64 + 63 + 3];
     }
     if (blackCanShortCastle)
     {
-        result ^= randomValues[(11 * 64) + 63 + 4];
+        result ^= randomValues[11 * 64 + 63 + 4];
     }
     if (blackCanLongCastle)
     {
-        result ^= randomValues[(11 * 64) + 63 + 5];
+        result ^= randomValues[11 * 64 + 63 + 5];
     }
 
     if (enPassantTargetSquare != -1)
     {
-        result ^= randomValues[(11 * 64) + 63 + 5 + square::file(enPassantTargetSquare)];
+        result ^= randomValues[11 * 64 + 63 + 5 + square::file(enPassantTargetSquare)];
     }
 
     return result;
 }
 
+/**
+ * Incrementally updates the Zobrist hash by only updating values affected by the move. This is significantly faster
+ * than the normal hash().
+ */
 uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece, uint64_t currentHash) const
 {
-    // return hash();
-    // TODO
-
-
     // Remove piece from starting square
     currentHash ^= randomValueForPiece(movingPiece, move.start());
     // Add piece to new square
@@ -767,28 +768,28 @@ uint64_t Board::hashAfterMove(Move move, Piece movingPiece, Piece capturedPiece,
     }
 
     // Side to move has changed
-    currentHash ^= randomValues[(11 * 64) + 63 + 1];
+    currentHash ^= randomValues[11 * 64 + 63 + 1];
 
     if (move.moveFlag() == MoveFlag::ShortCastling && movingPiece.color() == WHITE)
     {
-        currentHash ^= randomValues[(11 * 64) + 63 + 2];
+        currentHash ^= randomValues[11 * 64 + 63 + 2];
     }
     if (move.moveFlag() == MoveFlag::LongCastling && movingPiece.color() == WHITE)
     {
-        currentHash ^= randomValues[(11 * 64) + 63 + 3];
+        currentHash ^= randomValues[11 * 64 + 63 + 3];
     }
     if (move.moveFlag() == MoveFlag::ShortCastling && movingPiece.color() == BLACK)
     {
-        currentHash ^= randomValues[(11 * 64) + 63 + 4];
+        currentHash ^= randomValues[11 * 64 + 63 + 4];
     }
     if (move.moveFlag() == MoveFlag::LongCastling && movingPiece.color() == BLACK)
     {
-        currentHash ^= randomValues[(11 * 64) + 63 + 5];
+        currentHash ^= randomValues[11 * 64 + 63 + 5];
     }
 
     if (enPassantTargetSquare != -1)
     {
-        currentHash ^= randomValues[(11 * 64) + 63 + 5 + square::file(enPassantTargetSquare)];
+        currentHash ^= randomValues[11 * 64 + 63 + 5 + square::file(enPassantTargetSquare)];
     }
 
     return currentHash;

@@ -91,9 +91,8 @@ void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, int eval, M
 int moveScore(const Board& board, const Move& move)
 {
     int score = 0;
-    Piece piece = board[move.start()];
     // This won't be the case for en passant, but it's so rare that it's probably faster to do this without branching and possibly have a suboptimal move order with en passant moves (TODO: Benchmark)
-    Piece capturedPiece = board[move.end()];
+    const Piece capturedPiece = board[move.end()];
 
     // Capturing a high value piece with a low value piece is likely to be a good move
     if (!capturedPiece.isNone())
@@ -135,7 +134,7 @@ void orderMoves(Board& board, MoveList& moves)
         }
         move.score = moveScore(board, move);
     }
-    std::sort(moves.begin(), moves.end(), [](const Move& m1, const Move& m2)
+    std::ranges::sort(moves, [](const Move& m1, const Move& m2)
     {
         return m1.score > m2.score;
     });

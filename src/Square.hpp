@@ -20,7 +20,7 @@ namespace square
         return square % 8 + 1;
     }
 
-    inline Square fromString(std::string s)
+    inline Square fromString(const std::string& s)
     {
         if (s.length() != 2)
         {

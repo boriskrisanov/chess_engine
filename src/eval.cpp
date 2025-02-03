@@ -135,7 +135,7 @@ double openingWeight(const Board& board)
     totalMaterial += std::popcount(board.bitboards[BLACK_ROOK]) * ROOK_VALUE;
     totalMaterial += std::popcount(board.bitboards[BLACK_QUEEN]) * QUEEN_VALUE;
 
-    return std::max((totalMaterial / 1024) - 2, 0.0);
+    return std::max(totalMaterial / 1024 - 2, 0.0);
 }
 
 int staticEval(const Board& board)

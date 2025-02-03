@@ -21,7 +21,7 @@ struct SearchResult
     int depthSearched;
     DebugStats debugStats;
 
-    SearchResult(PieceColor sideToMove, Move bestMove, int eval, int depthSearched, DebugStats debugStats)
+    SearchResult(PieceColor sideToMove, Move bestMove, int eval, int depthSearched, const DebugStats& debugStats)
         : sideToMove(sideToMove), bestMove(bestMove), eval(eval), depthSearched(depthSearched), debugStats(debugStats)
     {
     }

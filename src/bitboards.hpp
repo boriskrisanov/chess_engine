@@ -11,7 +11,7 @@ namespace bitboards
 {
     constexpr Bitboard withSquare(Square square)
     {
-        return static_cast<Bitboard>(1) << (63 - square);
+        return static_cast<Bitboard>(1) << 63 - square;
     }
 
     inline Square popMSB(Bitboard& bitboard)

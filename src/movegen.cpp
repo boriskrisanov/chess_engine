@@ -13,26 +13,26 @@ namespace movegen
 {
     struct EdgeDistance
     {
-        uint8_t left;
-        uint8_t right;
-        uint8_t top;
-        uint8_t bottom;
-        uint8_t topLeft;
-        uint8_t topRight;
-        uint8_t bottomLeft;
-        uint8_t bottomRight;
+        uint8_t WEST;
+        uint8_t EAST;
+        uint8_t NORTH;
+        uint8_t SOUTH;
+        uint8_t NORTHWEST;
+        uint8_t NORTHEAST;
+        uint8_t SOUTHWEST;
+        uint8_t SOUTHEAST;
     };
 
     enum class Direction : int8_t
     {
-        UP = -8,
-        DOWN = 8,
-        LEFT = -1,
-        RIGHT = 1,
-        UP_LEFT = UP + LEFT,
-        UP_RIGHT = UP + RIGHT,
-        DOWN_LEFT = DOWN + LEFT,
-        DOWN_RIGHT = DOWN + RIGHT
+        NORTH = -8,
+        SOUTH = 8,
+        WEST = -1,
+        EAST = 1,
+        NORTHWEST = NORTH + WEST,
+        NORTHEAST = NORTH + EAST,
+        SOUTHWEST = SOUTH + WEST,
+        SOUTHEAST = SOUTH + EAST
     };
 
     constexpr array<EdgeDistance, 64> edgeDistances = []() consteval
@@ -42,16 +42,16 @@ namespace movegen
         for (int i = 0; i < 64; i++)
         {
             const Square rank = i / 8 + 1;
-            auto& [left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight] = distances[i];
+            auto& [west, east, north, south, northwest, northeast, southwest, southeast] = distances[i];
 
-            left = 8 - (rank * 8 - i);
-            right = rank * 8 - i - 1;
-            top = i / 8;
-            bottom = (63 - i) / 8;
-            topLeft = std::min(top, left);
-            topRight = std::min(top, right);
-            bottomLeft = std::min(bottom, left);
-            bottomRight = std::min(bottom, right);
+            west = 8 - (rank * 8 - i);
+            east = rank * 8 - i - 1;
+            north = i / 8;
+            south = (63 - i) / 8;
+            northwest = std::min(north, west);
+            northeast = std::min(north, east);
+            southwest = std::min(south, west);
+            southeast = std::min(south, east);
         }
 
         return distances;
@@ -61,22 +61,22 @@ namespace movegen
     {
         switch (direction)
         {
-        case Direction::UP:
-            return edgeDistances[square].top;
-        case Direction::DOWN:
-            return edgeDistances[square].bottom;
-        case Direction::LEFT:
-            return edgeDistances[square].left;
-        case Direction::RIGHT:
-            return edgeDistances[square].right;
-        case Direction::UP_LEFT:
-            return edgeDistances[square].topLeft;
-        case Direction::UP_RIGHT:
-            return edgeDistances[square].topRight;
-        case Direction::DOWN_LEFT:
-            return edgeDistances[square].bottomLeft;
-        case Direction::DOWN_RIGHT:
-            return edgeDistances[square].bottomRight;
+        case Direction::NORTH:
+            return edgeDistances[square].NORTH;
+        case Direction::SOUTH:
+            return edgeDistances[square].SOUTH;
+        case Direction::WEST:
+            return edgeDistances[square].WEST;
+        case Direction::EAST:
+            return edgeDistances[square].EAST;
+        case Direction::NORTHWEST:
+            return edgeDistances[square].NORTHWEST;
+        case Direction::NORTHEAST:
+            return edgeDistances[square].NORTHEAST;
+        case Direction::SOUTHWEST:
+            return edgeDistances[square].SOUTHWEST;
+        case Direction::SOUTHEAST:
+            return edgeDistances[square].SOUTHEAST;
         }
         // Impossible since the switch handles all cases. This is here just to get rid of the compiler warning.
         return 0;
@@ -90,7 +90,7 @@ namespace movegen
         {
             for (int i = 0; i < edgeDistanceInDirection(position, direction); i++)
             {
-                int targetSquare = position + static_cast<int8_t>(direction) * (i + 1);
+                const int targetSquare = position + static_cast<int8_t>(direction) * (i + 1);
                 attackingSquares |= bitboards::withSquare(targetSquare);
 
                 if ((blockers & bitboards::withSquare(targetSquare)) != 0)
@@ -110,35 +110,35 @@ namespace movegen
         {
             Bitboard squares = 0;
             const auto edgeDistance = edgeDistances[i];
-            if (edgeDistance.left >= 2 && edgeDistance.top >= 1)
+            if (edgeDistance.WEST >= 2 && edgeDistance.NORTH >= 1)
             {
                 squares |= bitboards::withSquare(i - 8 - 2);
             }
-            if (edgeDistance.left >= 1 && edgeDistance.top >= 2)
+            if (edgeDistance.WEST >= 1 && edgeDistance.NORTH >= 2)
             {
                 squares |= bitboards::withSquare(i - 8 * 2 - 1);
             }
-            if (edgeDistance.right >= 1 && edgeDistance.top >= 2)
+            if (edgeDistance.EAST >= 1 && edgeDistance.NORTH >= 2)
             {
                 squares |= bitboards::withSquare(i - 8 * 2 + 1);
             }
-            if (edgeDistance.left >= 2 && edgeDistance.bottom >= 1)
+            if (edgeDistance.WEST >= 2 && edgeDistance.SOUTH >= 1)
             {
                 squares |= bitboards::withSquare(i - 2 + 8);
             }
-            if (edgeDistance.right >= 2 && edgeDistance.bottom >= 1)
+            if (edgeDistance.EAST >= 2 && edgeDistance.SOUTH >= 1)
             {
                 squares |= bitboards::withSquare(i + 2 + 8);
             }
-            if (edgeDistance.left >= 1 && edgeDistance.bottom >= 2)
+            if (edgeDistance.WEST >= 1 && edgeDistance.SOUTH >= 2)
             {
                 squares |= bitboards::withSquare(i + 8 * 2 - 1);
             }
-            if (edgeDistance.right >= 1 && edgeDistance.bottom >= 2)
+            if (edgeDistance.EAST >= 1 && edgeDistance.SOUTH >= 2)
             {
                 squares |= bitboards::withSquare(i + 8 * 2 + 1);
             }
-            if (edgeDistance.right >= 2 && edgeDistance.top >= 1)
+            if (edgeDistance.EAST >= 2 && edgeDistance.NORTH >= 1)
             {
                 squares |= bitboards::withSquare(i - 8 + 2);
             }
@@ -169,55 +169,51 @@ namespace movegen
     }();
 
 
-    struct KingRay
+    struct RayFromSquare
     {
         Bitboard bitboard;
         Direction direction;
     };
 
-    constexpr array<array<KingRay, 8>, 64> precomputeKingRays()
+    constexpr array<array<RayFromSquare, 8>, 64> precomputeSquareRays()
     {
-        array<array<KingRay, 8>, 64> rays{};
+        using enum Direction;
+        array<array<RayFromSquare, 8>, 64> rays{};
 
         for (Square i = 0; i < 64; i++)
         {
-            rays[i][0] = {rayAttackingSquares(0, i, {Direction::UP}), Direction::UP};
-            rays[i][1] = {rayAttackingSquares(0, i, {Direction::DOWN}), Direction::DOWN};
-            rays[i][2] = {rayAttackingSquares(0, i, {Direction::LEFT}), Direction::LEFT};
-            rays[i][3] = {rayAttackingSquares(0, i, {Direction::RIGHT}), Direction::RIGHT};
-            rays[i][4] = {rayAttackingSquares(0, i, {Direction::UP_LEFT}), Direction::UP_LEFT};
-            rays[i][5] = {rayAttackingSquares(0, i, {Direction::UP_RIGHT}), Direction::UP_RIGHT};
-            rays[i][6] = {rayAttackingSquares(0, i, {Direction::DOWN_LEFT}), Direction::DOWN_LEFT};
-            rays[i][7] = {rayAttackingSquares(0, i, {Direction::DOWN_RIGHT}), Direction::DOWN_RIGHT};
+            rays[i][0] = {rayAttackingSquares(0, i, {NORTH}), NORTH};
+            rays[i][1] = {rayAttackingSquares(0, i, {SOUTH}), SOUTH};
+            rays[i][2] = {rayAttackingSquares(0, i, {WEST}), WEST};
+            rays[i][3] = {rayAttackingSquares(0, i, {EAST}), EAST};
+            rays[i][4] = {rayAttackingSquares(0, i, {NORTHWEST}), NORTHWEST};
+            rays[i][5] = {rayAttackingSquares(0, i, {NORTHEAST}), NORTHEAST};
+            rays[i][6] = {rayAttackingSquares(0, i, {SOUTHWEST}), SOUTHWEST};
+            rays[i][7] = {rayAttackingSquares(0, i, {SOUTHEAST}), SOUTHEAST};
         }
 
         return rays;
     }
 
-    const auto KING_RAYS = precomputeKingRays();
+    const auto SQUARE_RAYS = precomputeSquareRays();
 
     array<array<Bitboard, 64>, 64> computeSquaresBetweenSquares()
     {
         array<array<Bitboard, 64>, 64> s{};
         for (Square i = 0; i < 64; i++)
         {
-            for (const auto [rayBitboard, direction] : KING_RAYS[i])
+            for (const auto [rayBitboard, direction] : SQUARE_RAYS[i])
             {
                 for (Square j = 0; j < edgeDistanceInDirection(i, direction); j++)
                 {
                     const int offset = static_cast<int>(direction);
                     const Square targetSquare = i + offset * (j + 1);
-                    // if (i == 4 && direction == Direction::LEFT && targetSquare == 2)
-                    // {
-                    //     int x;
-                    // }
                     Square k = i + offset;
                     while (k != targetSquare)
                     {
                         s[i][targetSquare] |= bitboards::withSquare(k);
                         k += offset;
                     }
-                    // s[i][targetSquare] |= bitboards::withSquare(targetSquare);
                 }
             }
         }
@@ -248,7 +244,7 @@ namespace movegen
             {
                 if (((configuration >> i) & 1) != 0)
                 {
-                    finalConfig |= static_cast<Bitboard>(1) << (63 - indexes.at(j));
+                    finalConfig |= static_cast<Bitboard>(1) << 63 - indexes.at(j);
                 }
                 j++;
             }
@@ -305,7 +301,7 @@ namespace movegen
     };
 
 
-    array<Bitboard, 64> ROOK_BLOCKER_MASKS = []()
+    array<Bitboard, 64> ROOK_BLOCKER_MASKS = []
     {
         array<Bitboard, 64> masks{};
         for (int rookIndex = 0; rookIndex < 64; rookIndex++)
@@ -334,19 +330,19 @@ namespace movegen
         return masks;
     }();
 
-    array<Bitboard, 64> BISHOP_BLOCKER_MASKS = []()
+    array<Bitboard, 64> BISHOP_BLOCKER_MASKS = []
     {
         array<Bitboard, 64> masks{};
         for (int bishopIndex = 0; bishopIndex < 64; bishopIndex++)
         {
-            const array directions{
-                Direction::UP_LEFT, Direction::UP_RIGHT, Direction::DOWN_LEFT, Direction::DOWN_RIGHT
+            constexpr array directions{
+                Direction::NORTHWEST, Direction::NORTHEAST, Direction::SOUTHWEST, Direction::SOUTHEAST
             };
             for (Direction direction : directions)
             {
                 for (int i = 0; i < edgeDistanceInDirection(bishopIndex, direction); i++)
                 {
-                    Square targetSquare = bishopIndex + static_cast<uint8_t>(direction) * (i + 1);
+                    const Square targetSquare = bishopIndex + static_cast<uint8_t>(direction) * (i + 1);
                     const bool isEdgeSquare = square::rank(targetSquare) == 1 || square::rank(targetSquare) == 8 ||
                         square::file(targetSquare) == 1 || square::file(targetSquare) == 8;
                     if (!isEdgeSquare)
@@ -376,12 +372,12 @@ namespace movegen
             arrayLength++;
 
             attackingSquares[i].resize(arrayLength);
-            for (Bitboard blockerPositions : possibleBlockerPositions(ROOK_BLOCKER_MASKS[i]))
+            for (const Bitboard blockerPositions : possibleBlockerPositions(ROOK_BLOCKER_MASKS[i]))
             {
                 const uint32_t index = blockerPositions * ROOK_MAGICS[i] >> ROOK_SHIFTS[i];
                 attackingSquares[i][index] = rayAttackingSquares(blockerPositions, i, {
-                                                                     Direction::UP, Direction::DOWN, Direction::LEFT,
-                                                                     Direction::RIGHT
+                                                                     Direction::NORTH, Direction::SOUTH, Direction::WEST,
+                                                                     Direction::EAST
                                                                  });
             }
         }
@@ -405,13 +401,13 @@ namespace movegen
             arrayLength++;
 
             attackingSquares[i].resize(arrayLength);
-            for (Bitboard blockerPositions : possibleBlockerPositions(BISHOP_BLOCKER_MASKS[i]))
+            for (const Bitboard blockerPositions : possibleBlockerPositions(BISHOP_BLOCKER_MASKS[i]))
             {
                 const uint32_t index = blockerPositions * BISHOP_MAGICS[i] >> BISHOP_SHIFTS[i];
                 attackingSquares[i][index] = rayAttackingSquares(blockerPositions, i, {
-                                                                     Direction::UP_LEFT, Direction::UP_RIGHT,
-                                                                     Direction::DOWN_LEFT,
-                                                                     Direction::DOWN_RIGHT
+                                                                     Direction::NORTHWEST, Direction::NORTHEAST,
+                                                                     Direction::SOUTHWEST,
+                                                                     Direction::SOUTHEAST
                                                                  });
             }
         }
@@ -437,7 +433,7 @@ namespace movegen
         // Sliding pieces
         // TODO: Use bitboards
         uint8_t numSlidingCheckDirections = 0;
-        for (const auto [rayBitboard, direction] : KING_RAYS[kingPos])
+        for (const auto [rayBitboard, direction] : SQUARE_RAYS[kingPos])
         {
             if (board.getSlidingPieces(oppositeColor(board.sideToMove)) & rayBitboard == 0)
             {
@@ -447,15 +443,15 @@ namespace movegen
             Bitboard raySquares = 0;
             for (Square i = 0; i < edgeDistanceInDirection(kingPos, direction); i++)
             {
-                Square targetSquare = kingPos + static_cast<int>(direction) * (i + 1);
+                const Square targetSquare = kingPos + static_cast<int>(direction) * (i + 1);
                 if (board[targetSquare].isNone())
                 {
                     raySquares |= bitboards::withSquare(targetSquare);
                 }
-                else if (((board[targetSquare].kind() == PieceKind::ROOK && (direction == UP || direction == DOWN ||
+                else if (((board[targetSquare].kind() == PieceKind::ROOK && (direction == NORTH || direction == SOUTH ||
                     direction
-                    == LEFT || direction == RIGHT)) || (board[targetSquare].kind() == PieceKind::BISHOP && (direction ==
-                    UP_LEFT || direction == UP_RIGHT || direction == DOWN_LEFT || direction == DOWN_RIGHT)) || board[
+                    == WEST || direction == EAST)) || (board[targetSquare].kind() == PieceKind::BISHOP && (direction ==
+                    NORTHWEST || direction == NORTHEAST || direction == SOUTHWEST || direction == SOUTHEAST)) || board[
                     targetSquare].kind() == PieceKind::QUEEN) && board[targetSquare].color() != board.sideToMove)
                 {
                     // In check from this direction
@@ -486,17 +482,17 @@ namespace movegen
             bool edgeDistanceRequirement1, edgeDistanceRequirement2;
             if (board.sideToMove == WHITE)
             {
-                p1 = kingPos + static_cast<int>(UP_LEFT);
-                p2 = kingPos + static_cast<int>(UP_RIGHT);
-                edgeDistanceRequirement1 = edgeDistanceInDirection(kingPos, UP_LEFT) > 0;
-                edgeDistanceRequirement2 = edgeDistanceInDirection(kingPos, UP_RIGHT) > 0;
+                p1 = kingPos + static_cast<int>(NORTHWEST);
+                p2 = kingPos + static_cast<int>(NORTHEAST);
+                edgeDistanceRequirement1 = edgeDistanceInDirection(kingPos, NORTHWEST) > 0;
+                edgeDistanceRequirement2 = edgeDistanceInDirection(kingPos, NORTHEAST) > 0;
             }
             else
             {
-                p1 = kingPos + static_cast<int>(DOWN_LEFT);
-                p2 = kingPos + static_cast<int>(DOWN_RIGHT);
-                edgeDistanceRequirement1 = edgeDistanceInDirection(kingPos, DOWN_LEFT) > 0;
-                edgeDistanceRequirement2 = edgeDistanceInDirection(kingPos, DOWN_RIGHT) > 0;
+                p1 = kingPos + static_cast<int>(SOUTHWEST);
+                p2 = kingPos + static_cast<int>(SOUTHEAST);
+                edgeDistanceRequirement1 = edgeDistanceInDirection(kingPos, SOUTHWEST) > 0;
+                edgeDistanceRequirement2 = edgeDistanceInDirection(kingPos, SOUTHEAST) > 0;
             }
             if (edgeDistanceRequirement1 && board[p1].kind() == PieceKind::PAWN && board[p1].color() == oppositeColor(
                 board.sideToMove))
@@ -516,44 +512,44 @@ namespace movegen
         // Knights
         {
             Bitboard knightPositions = 0;
-            EdgeDistance edgeDistance = edgeDistances[kingPos];
+            const auto [WEST, EAST, NORTH, SOUTH, NORTHWEST, NORTHEAST, SOUTHWEST, SOUTHEAST] = edgeDistances[kingPos];
 
-            if (edgeDistance.left >= 1 && edgeDistance.top >= 2)
+            if (WEST >= 1 && NORTH >= 2)
             {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(LEFT) + static_cast<int>(UP) * 2);
+                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) + static_cast<int>(NORTH) * 2);
             }
-            if (edgeDistance.right >= 1 && edgeDistance.top >= 2)
+            if (EAST >= 1 && NORTH >= 2)
             {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(RIGHT) + static_cast<int>(UP) * 2);
+                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(EAST) + static_cast<int>(NORTH) * 2);
             }
-            if (edgeDistance.left >= 1 && edgeDistance.bottom >= 2)
+            if (WEST >= 1 && SOUTH >= 2)
             {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(LEFT) + static_cast<int>(DOWN) * 2);
+                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) + static_cast<int>(SOUTH) * 2);
             }
-            if (edgeDistance.right >= 1 && edgeDistance.bottom >= 2)
+            if (EAST >= 1 && SOUTH >= 2)
             {
                 knightPositions |=
-                    bitboards::withSquare(kingPos + static_cast<int>(RIGHT) + static_cast<int>(DOWN) * 2);
+                    bitboards::withSquare(kingPos + static_cast<int>(EAST) + static_cast<int>(SOUTH) * 2);
             }
-            if (edgeDistance.left >= 2 && edgeDistance.top >= 1)
+            if (WEST >= 2 && NORTH >= 1)
             {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(LEFT) * 2 + static_cast<int>(UP));
+                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) * 2 + static_cast<int>(NORTH));
             }
-            if (edgeDistance.left >= 2 && edgeDistance.bottom >= 1)
+            if (WEST >= 2 && SOUTH >= 1)
             {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(LEFT) * 2 + static_cast<int>(DOWN));
+                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) * 2 + static_cast<int>(SOUTH));
             }
-            if (edgeDistance.right >= 2 && edgeDistance.top >= 1)
+            if (EAST >= 2 && NORTH >= 1)
             {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(RIGHT) * 2 + static_cast<int>(UP));
+                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(EAST) * 2 + static_cast<int>(NORTH));
             }
-            if (edgeDistance.right >= 2 && edgeDistance.bottom >= 1)
+            if (EAST >= 2 && SOUTH >= 1)
             {
                 knightPositions |=
-                    bitboards::withSquare(kingPos + static_cast<int>(RIGHT) * 2 + static_cast<int>(DOWN));
+                    bitboards::withSquare(kingPos + static_cast<int>(EAST) * 2 + static_cast<int>(SOUTH));
             }
 
-            for (Square position : bitboards::squaresOf(knightPositions))
+            for (const Square position : bitboards::squaresOf(knightPositions))
             {
                 if (board[position].kind() == PieceKind::KNIGHT && board[position].color() == oppositeColor(
                     board.sideToMove))
@@ -566,14 +562,12 @@ namespace movegen
             }
         }
 
-        if ((numSlidingCheckDirections > 0 && checkFromNonSlidingPiece) || numSlidingCheckDirections > 1)
-        [[unlikely]]
+        if ((numSlidingCheckDirections > 0 && checkFromNonSlidingPiece) || numSlidingCheckDirections > 1) [[unlikely]]
         {
             // Discovered double check, there are no resolution squares because it cannot be blocked and both pieces
             // cannot be captured in one move.
             squares = 0;
         }
-
         return squares;
     }
 
@@ -590,12 +584,12 @@ namespace movegen
         const Bitboard enemyQueens = board.bitboards[Piece{PieceKind::QUEEN, oppositeColor(side)}.index()];
         const Square kingPos = bitboards::getMSB(king);
 
-        for (const auto [rayBitboard, direction] : KING_RAYS[kingPos])
+        for (const auto [rayBitboard, direction] : SQUARE_RAYS[kingPos])
         {
             const Bitboard orthogonalSliders = rayBitboard & (enemyRooks | enemyQueens);
             const Bitboard diagonalSliders = rayBitboard & (enemyBishops | enemyQueens);
-            const Bitboard possibleAttackers = (direction == UP || direction == DOWN || direction == LEFT || direction
-                                                   == RIGHT)
+            const Bitboard possibleAttackers = (direction == NORTH || direction == SOUTH || direction == WEST || direction
+                                                   == EAST)
                                                    ? orthogonalSliders
                                                    : diagonalSliders;
             if (possibleAttackers == 0)
@@ -604,7 +598,7 @@ namespace movegen
                 continue;
             }
             // Get the first attacker along this direction. If the index of the attacker is less than the king, this will be the least significant bit. If it is greater, this will be the most significant bit.
-            const Square attackerPos = (direction == UP || direction == LEFT || direction == UP_LEFT || direction == UP_RIGHT) ? bitboards::getLSB(possibleAttackers) : bitboards::getMSB(possibleAttackers);
+            const Square attackerPos = (direction == NORTH || direction == WEST || direction == NORTHWEST || direction == NORTHEAST) ? bitboards::getLSB(possibleAttackers) : bitboards::getMSB(possibleAttackers);
             Bitboard piecesBetweenKingAndAttacker = squaresBetweenSquares[kingPos][attackerPos] & board.getPieces() & ~possibleAttackers;
             if (std::popcount(piecesBetweenKingAndAttacker) == 0)
             {
@@ -627,7 +621,7 @@ namespace movegen
     void generatePawnMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
-        Bitboard pawns = board.bitboards[Piece{PieceKind::PAWN, side}.index()];
+        const Bitboard pawns = board.bitboards[Piece{PieceKind::PAWN, side}.index()];
         const Bitboard emptySquares = ~board.getPieces();
         const Bitboard enemyPieces = board.getPieces(oppositeColor(side));
         const int direction = side == WHITE ? 1 : -1;
@@ -639,11 +633,11 @@ namespace movegen
         Bitboard doublePushes = (side == WHITE ? singlePushes << 8 : singlePushes >> 8) & emptySquares &
             doublePushTarget;
         Bitboard leftCaptures = (side == WHITE
-                                     ? ((pawns & ~bitboards::FILE_A) << 9)
-                                     : ((pawns & ~bitboards::FILE_A) >> 7)) & enemyPieces;
+                                     ? (pawns & ~bitboards::FILE_A) << 9
+                                     : (pawns & ~bitboards::FILE_A) >> 7) & enemyPieces;
         Bitboard rightCaptures = (side == WHITE
-                                      ? ((pawns & ~bitboards::FILE_H) << 7)
-                                      : ((pawns & ~bitboards::FILE_H) >> 9)) & enemyPieces;
+                                      ? (pawns & ~bitboards::FILE_H) << 7
+                                      : (pawns & ~bitboards::FILE_H) >> 9) & enemyPieces;
 
         Bitboard singlePushesWithPromotion = singlePushes & promotionRank;
         Bitboard leftCapturesWithPromotion = leftCaptures & promotionRank;
@@ -656,7 +650,7 @@ namespace movegen
         // Pawn pushes
         while (singlePushes != 0)
         {
-            Square i = bitboards::popMSB(singlePushes);
+            const Square i = bitboards::popMSB(singlePushes);
             const Square start = i + 8 * direction;
             const Bitboard targetBitboard = bitboards::withSquare(i);
             if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
@@ -666,7 +660,7 @@ namespace movegen
         }
         while (doublePushes != 0)
         {
-            Square i = bitboards::popMSB(doublePushes);
+            const Square i = bitboards::popMSB(doublePushes);
             const Square start = i + 16 * direction;
             const Bitboard targetBitboard = bitboards::withSquare(i);
             if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
@@ -700,7 +694,7 @@ namespace movegen
         // Promotion
         while (singlePushesWithPromotion != 0)
         {
-            Square i = bitboards::popMSB(singlePushesWithPromotion);
+            const Square i = bitboards::popMSB(singlePushesWithPromotion);
             const Square start = i + 8 * direction;
             const Bitboard targetBitboard = bitboards::withSquare(i);
             if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
@@ -726,7 +720,7 @@ namespace movegen
         }
         while (rightCapturesWithPromotion != 0)
         {
-            Square i = bitboards::popMSB(rightCapturesWithPromotion);
+            const Square i = bitboards::popMSB(rightCapturesWithPromotion);
             const Square start = i + (side == WHITE ? 7 : 9) * direction;
             const Bitboard targetBitboard = bitboards::withSquare(i);
             if ((checkResolutions & targetBitboard) != 0 && (pinLines[start] & targetBitboard) != 0)
@@ -747,7 +741,7 @@ namespace movegen
                 ep + 7 * direction));
             while (enPassantPawns != 0)
             {
-                Square i = bitboards::popMSB(enPassantPawns);
+                const Square i = bitboards::popMSB(enPassantPawns);
                 if ((bitboards::withSquare(i) & bitboards::FILE_A) != 0
                     && (bitboards::withSquare(ep) & bitboards::FILE_H) != 0)
                 {
@@ -776,7 +770,7 @@ namespace movegen
         }
     }
 
-    void generateKnightMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
+    void generateKnightMoves(MoveList& moves, const Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard knights = board.bitboards[Piece{PieceKind::KNIGHT, side}.index()];
@@ -791,13 +785,13 @@ namespace movegen
             attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
-                Square end = bitboards::popMSB(attackingSquares);
+                const Square end = bitboards::popMSB(attackingSquares);
                 moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
 
-    void generateBishopMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
+    void generateBishopMoves(MoveList& moves, const Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard bishops = board.bitboards[Piece{PieceKind::BISHOP, side}.index()];
@@ -814,13 +808,13 @@ namespace movegen
             attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
-                Square end = bitboards::popMSB(attackingSquares);
+                const Square end = bitboards::popMSB(attackingSquares);
                 moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
 
-    void generateRookMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
+    void generateRookMoves(MoveList& moves, const Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard rooks = board.bitboards[Piece{PieceKind::ROOK, side}.index()];
@@ -837,13 +831,13 @@ namespace movegen
             attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
-                Square end = bitboards::popMSB(attackingSquares);
+                const Square end = bitboards::popMSB(attackingSquares);
                 moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
 
-    void generateQueenMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
+    void generateQueenMoves(MoveList& moves, const Board& board, Bitboard checkResolutions)
     {
         const PieceColor side = board.sideToMove;
         Bitboard queens = board.bitboards[Piece{PieceKind::QUEEN, side}.index()];
@@ -865,17 +859,17 @@ namespace movegen
             attackingSquares &= pinLines[i] & checkResolutions;
             while (attackingSquares != 0)
             {
-                Square end = bitboards::popMSB(attackingSquares);
+                const Square end = bitboards::popMSB(attackingSquares);
                 moves.emplace_back(i, end, MoveFlag::None);
             }
         }
     }
 
-    void generateKingMoves(MoveList& moves, Board& board, Bitboard checkResolutions)
+    void generateKingMoves(MoveList& moves, const Board& board)
     {
         const PieceColor side = board.sideToMove;
         Bitboard king = board.bitboards[Piece{PieceKind::KING, side}.index()];
-        Square i = bitboards::popMSB(king);
+        const Square i = bitboards::popMSB(king);
         Bitboard attackingSquares = kingAttackingSquares[i];
         attackingSquares &= ~board.getPieces(side);
         attackingSquares &= pinLines[i];
@@ -898,24 +892,24 @@ namespace movegen
                 */
                 using enum Direction;
                 using std::ranges::find;
-                if ((find(rayCheckDirections, UP) != rayCheckDirections.end() && targetSquare == i +
+                if ((find(rayCheckDirections, NORTH) != rayCheckDirections.end() && targetSquare == i +
                         static_cast<
-                            int>(DOWN))
-                    || (find(rayCheckDirections, DOWN) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(UP))
-                    || (find(rayCheckDirections, LEFT) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(RIGHT))
-                    || (find(rayCheckDirections, RIGHT) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(LEFT))
-                    || (find(rayCheckDirections, UP_LEFT) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(DOWN_RIGHT))
-                    || (find(rayCheckDirections, UP_RIGHT) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(DOWN_LEFT))
-                    || (find(rayCheckDirections, DOWN_LEFT) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(UP_RIGHT))
-                    || (find(rayCheckDirections, DOWN_RIGHT) != rayCheckDirections.end() && targetSquare == i
+                            int>(SOUTH))
+                    || (find(rayCheckDirections, SOUTH) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(NORTH))
+                    || (find(rayCheckDirections, WEST) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(EAST))
+                    || (find(rayCheckDirections, EAST) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(WEST))
+                    || (find(rayCheckDirections, NORTHWEST) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(SOUTHEAST))
+                    || (find(rayCheckDirections, NORTHEAST) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(SOUTHWEST))
+                    || (find(rayCheckDirections, SOUTHWEST) != rayCheckDirections.end() && targetSquare == i +
+                        static_cast<int>(NORTHEAST))
+                    || (find(rayCheckDirections, SOUTHEAST) != rayCheckDirections.end() && targetSquare == i
                         +
-                        static_cast<int>(UP_LEFT)))
+                        static_cast<int>(NORTHWEST)))
                 {
                     continue;
                 }
@@ -995,19 +989,19 @@ namespace movegen
         generateBishopMoves(moves, board, checkResolutions);
         generateRookMoves(moves, board, checkResolutions);
         generateQueenMoves(moves, board, checkResolutions);
-        generateKingMoves(moves, board, checkResolutions);
+        generateKingMoves(moves, board);
 
         return moves;
     }
 
     Bitboard getPawnAttackingSquares(Bitboard pawns, PieceColor side)
     {
-        Bitboard leftCaptures = (side == WHITE
-                                     ? ((pawns & ~bitboards::FILE_A) << 9)
-                                     : ((pawns & ~bitboards::FILE_A) >> 7));
-        Bitboard rightCaptures = (side == WHITE
-                                      ? ((pawns & ~bitboards::FILE_H) << 7)
-                                      : ((pawns & ~bitboards::FILE_H) >> 9));
+        const Bitboard leftCaptures = side == WHITE
+                                          ? (pawns & ~bitboards::FILE_A) << 9
+                                          : (pawns & ~bitboards::FILE_A) >> 7;
+        const Bitboard rightCaptures = side == WHITE
+                                           ? (pawns & ~bitboards::FILE_H) << 7
+                                           : (pawns & ~bitboards::FILE_H) >> 9;
         return leftCaptures | rightCaptures;
     }
 
