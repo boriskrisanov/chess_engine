@@ -156,6 +156,7 @@ public:
     bool isStalemate();
     bool isInsufficientMaterial() const;
     bool isThreefoldRepetition();
+    bool isDrawByFiftyMoveRule() const;
 
 private:
     std::array<Piece, 64> board{};

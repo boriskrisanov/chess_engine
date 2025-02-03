@@ -649,9 +649,14 @@ bool Board::isThreefoldRepetition()
     return false;
 }
 
+bool Board::isDrawByFiftyMoveRule() const
+{
+    return halfMoveClock >= 50;
+}
+
 bool Board::isDraw()
 {
-    return halfMoveClock >= 50 || isStalemate() || isInsufficientMaterial() || isThreefoldRepetition();
+    return isDrawByFiftyMoveRule() || isStalemate() || isInsufficientMaterial() || isThreefoldRepetition();
 }
 
 void Board::updateAttackingSquares()
