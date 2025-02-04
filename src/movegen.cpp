@@ -376,7 +376,8 @@ namespace movegen
             {
                 const uint32_t index = blockerPositions * ROOK_MAGICS[i] >> ROOK_SHIFTS[i];
                 attackingSquares[i][index] = rayAttackingSquares(blockerPositions, i, {
-                                                                     Direction::NORTH, Direction::SOUTH, Direction::WEST,
+                                                                     Direction::NORTH, Direction::SOUTH,
+                                                                     Direction::WEST,
                                                                      Direction::EAST
                                                                  });
             }
@@ -419,164 +420,65 @@ namespace movegen
     const array<vector<Bitboard>, 64> ROOK_ATTACKING_SQUARES = computeRookAttackingSquares();
     const array<vector<Bitboard>, 64> BISHOP_ATTACKING_SQUARES = computeBishopAttackingSquares();
 
-    // Inefficient, fine for now
-    vector<Direction> rayCheckDirections;
-    bool isRayCheck;
+    Bitboard slidingCheckers = 0;
 
     Bitboard checkResolutionSquares(const Board& board)
     {
         using enum Direction;
+        using pieceIndexes::WHITE_PAWN, pieceIndexes::BLACK_PAWN;
 
-        Bitboard squares = 0;
-        const Square kingPos = bitboards::getMSB(board.bitboards[Piece{PieceKind::KING, board.sideToMove}.index()]);
-
+        Bitboard slidingCheckEvasions = 0;
+        const Bitboard king = board.bitboards[Piece{PieceKind::KING, board.sideToMove}.index()];
+        const Square kingPos = bitboards::getMSB(king);
         // Sliding pieces
-        // TODO: Use bitboards
-        uint8_t numSlidingCheckDirections = 0;
-        for (const auto [rayBitboard, direction] : SQUARE_RAYS[kingPos])
+        if (std::popcount(slidingCheckers) > 1)
         {
-            if (board.getSlidingPieces(oppositeColor(board.sideToMove)) & rayBitboard == 0)
-            {
-                // No enemy sliding pieces along this ray, so the king can't be in check from this direction
-                continue;
-            }
-            Bitboard raySquares = 0;
-            for (Square i = 0; i < edgeDistanceInDirection(kingPos, direction); i++)
-            {
-                const Square targetSquare = kingPos + static_cast<int>(direction) * (i + 1);
-                if (board[targetSquare].isNone())
-                {
-                    raySquares |= bitboards::withSquare(targetSquare);
-                }
-                else if (((board[targetSquare].kind() == PieceKind::ROOK && (direction == NORTH || direction == SOUTH ||
-                    direction
-                    == WEST || direction == EAST)) || (board[targetSquare].kind() == PieceKind::BISHOP && (direction ==
-                    NORTHWEST || direction == NORTHEAST || direction == SOUTHWEST || direction == SOUTHEAST)) || board[
-                    targetSquare].kind() == PieceKind::QUEEN) && board[targetSquare].color() != board.sideToMove)
-                {
-                    // In check from this direction
-                    squares |= raySquares;
-                    // Attacking piece can be captured
-                    squares |= bitboards::withSquare(targetSquare);
-                    numSlidingCheckDirections++;
-
-                    isRayCheck = true;
-                    rayCheckDirections.push_back(direction);
-
-                    break;
-                }
-                else if (!board[targetSquare].isNone())
-                {
-                    // Piece is in the way, not in check from this direction
-                    break;
-                }
-            }
+            // Double check, king must move
+            return 0;
+        }
+        if (slidingCheckers != 0)
+        {
+            slidingCheckEvasions = squaresBetweenSquares[kingPos][bitboards::getMSB(slidingCheckers)] |
+                bitboards::withSquare(
+                    bitboards::getMSB(slidingCheckers));
         }
 
-        bool checkFromNonSlidingPiece = false;
-
+        Bitboard nonSlidingCheckers = 0;
         // Pawns
+        if (board.sideToMove == WHITE)
         {
-            int p1;
-            int p2;
-            bool edgeDistanceRequirement1, edgeDistanceRequirement2;
-            if (board.sideToMove == WHITE)
-            {
-                p1 = kingPos + static_cast<int>(NORTHWEST);
-                p2 = kingPos + static_cast<int>(NORTHEAST);
-                edgeDistanceRequirement1 = edgeDistanceInDirection(kingPos, NORTHWEST) > 0;
-                edgeDistanceRequirement2 = edgeDistanceInDirection(kingPos, NORTHEAST) > 0;
-            }
-            else
-            {
-                p1 = kingPos + static_cast<int>(SOUTHWEST);
-                p2 = kingPos + static_cast<int>(SOUTHEAST);
-                edgeDistanceRequirement1 = edgeDistanceInDirection(kingPos, SOUTHWEST) > 0;
-                edgeDistanceRequirement2 = edgeDistanceInDirection(kingPos, SOUTHEAST) > 0;
-            }
-            if (edgeDistanceRequirement1 && board[p1].kind() == PieceKind::PAWN && board[p1].color() == oppositeColor(
-                board.sideToMove))
-            {
-                squares |= bitboards::withSquare(p1);
-                checkFromNonSlidingPiece = true;
-            }
-            else if (edgeDistanceRequirement2 && board[p2].kind() == PieceKind::PAWN && board[p2].color() ==
-                oppositeColor(
-                    board.sideToMove))
-            {
-                squares |= bitboards::withSquare(p2);
-                checkFromNonSlidingPiece = true;
-            }
+            nonSlidingCheckers |= ((king & ~bitboards::FILE_A) << 9) & board.bitboards[BLACK_PAWN];
+            nonSlidingCheckers |= ((king & ~bitboards::FILE_H) << 7) & board.bitboards[BLACK_PAWN];
+        }
+        else
+        {
+            nonSlidingCheckers |= ((king & ~bitboards::FILE_H) >> 9) & board.bitboards[WHITE_PAWN];
+            nonSlidingCheckers |= ((king & ~bitboards::FILE_A) >> 7) & board.bitboards[WHITE_PAWN];
         }
 
         // Knights
-        {
-            Bitboard knightPositions = 0;
-            const auto [WEST, EAST, NORTH, SOUTH, NORTHWEST, NORTHEAST, SOUTHWEST, SOUTHEAST] = edgeDistances[kingPos];
+        const Bitboard attackingKnights = knightAttackingSquares[kingPos] & board.bitboards[Piece{
+            PieceKind::KNIGHT, oppositeColor(board.sideToMove)
+        }.index()];
+        nonSlidingCheckers |= attackingKnights;
 
-            if (WEST >= 1 && NORTH >= 2)
-            {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) + static_cast<int>(NORTH) * 2);
-            }
-            if (EAST >= 1 && NORTH >= 2)
-            {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(EAST) + static_cast<int>(NORTH) * 2);
-            }
-            if (WEST >= 1 && SOUTH >= 2)
-            {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) + static_cast<int>(SOUTH) * 2);
-            }
-            if (EAST >= 1 && SOUTH >= 2)
-            {
-                knightPositions |=
-                    bitboards::withSquare(kingPos + static_cast<int>(EAST) + static_cast<int>(SOUTH) * 2);
-            }
-            if (WEST >= 2 && NORTH >= 1)
-            {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) * 2 + static_cast<int>(NORTH));
-            }
-            if (WEST >= 2 && SOUTH >= 1)
-            {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(WEST) * 2 + static_cast<int>(SOUTH));
-            }
-            if (EAST >= 2 && NORTH >= 1)
-            {
-                knightPositions |= bitboards::withSquare(kingPos + static_cast<int>(EAST) * 2 + static_cast<int>(NORTH));
-            }
-            if (EAST >= 2 && SOUTH >= 1)
-            {
-                knightPositions |=
-                    bitboards::withSquare(kingPos + static_cast<int>(EAST) * 2 + static_cast<int>(SOUTH));
-            }
-
-            for (const Square position : bitboards::squaresOf(knightPositions))
-            {
-                if (board[position].kind() == PieceKind::KNIGHT && board[position].color() == oppositeColor(
-                    board.sideToMove))
-                {
-                    squares |= bitboards::withSquare(position);
-                    checkFromNonSlidingPiece = true;
-                    // There cannot be a check from 2 knights at once, so there is no need to check other possible knight positions
-                    break;
-                }
-            }
-        }
-
-        if ((numSlidingCheckDirections > 0 && checkFromNonSlidingPiece) || numSlidingCheckDirections > 1) [[unlikely]]
+        if (slidingCheckers != 0 && nonSlidingCheckers != 0)
         {
             // Discovered double check, there are no resolution squares because it cannot be blocked and both pieces
             // cannot be captured in one move.
-            squares = 0;
+            return 0;
         }
-        return squares;
+        return slidingCheckEvasions | nonSlidingCheckers;
     }
 
     array<Bitboard, 64> pinLines{};
-    void computePinLines(const Board& board, PieceColor side)
+    // This should be called before checkResolutionSquares()
+    void computePinLinesAndSlidingCheckers(const Board& board, PieceColor side)
     {
         using enum Direction;
 
         pinLines.fill(bitboards::ALL_SQUARES);
+        slidingCheckers = 0;
 
         const Bitboard king = board.bitboards[Piece{PieceKind::KING, side}.index()];
         const Bitboard enemyRooks = board.bitboards[Piece{PieceKind::ROOK, oppositeColor(side)}.index()];
@@ -588,21 +490,26 @@ namespace movegen
         {
             const Bitboard orthogonalSliders = rayBitboard & (enemyRooks | enemyQueens);
             const Bitboard diagonalSliders = rayBitboard & (enemyBishops | enemyQueens);
-            const Bitboard possibleAttackers = (direction == NORTH || direction == SOUTH || direction == WEST || direction
-                                                   == EAST)
-                                                   ? orthogonalSliders
-                                                   : diagonalSliders;
+            const Bitboard possibleAttackers =
+                direction == NORTH || direction == SOUTH || direction == WEST || direction == EAST
+                    ? orthogonalSliders
+                    : diagonalSliders;
             if (possibleAttackers == 0)
             {
                 // Cannot be pinned on this ray
                 continue;
             }
             // Get the first attacker along this direction. If the index of the attacker is less than the king, this will be the least significant bit. If it is greater, this will be the most significant bit.
-            const Square attackerPos = (direction == NORTH || direction == WEST || direction == NORTHWEST || direction == NORTHEAST) ? bitboards::getLSB(possibleAttackers) : bitboards::getMSB(possibleAttackers);
-            Bitboard piecesBetweenKingAndAttacker = squaresBetweenSquares[kingPos][attackerPos] & board.getPieces() & ~possibleAttackers;
+            const Square attackerPos = (direction == NORTH || direction == WEST || direction == NORTHWEST || direction
+                                           == NORTHEAST)
+                                           ? bitboards::getLSB(possibleAttackers)
+                                           : bitboards::getMSB(possibleAttackers);
+            Bitboard piecesBetweenKingAndAttacker = squaresBetweenSquares[kingPos][attackerPos] & board.getPieces() & ~
+                possibleAttackers;
             if (std::popcount(piecesBetweenKingAndAttacker) == 0)
             {
                 // In check from this direction
+                slidingCheckers |= bitboards::withSquare(attackerPos);
                 continue;
             }
             if (std::popcount(piecesBetweenKingAndAttacker) == 1)
@@ -611,10 +518,11 @@ namespace movegen
                 if (friendlyIntersectingPiece != 0)
                 {
                     // Piece is pinned
-                    pinLines[bitboards::getMSB(friendlyIntersectingPiece)] = squaresBetweenSquares[kingPos][attackerPos] | bitboards::withSquare(attackerPos);
+                    pinLines[bitboards::getMSB(friendlyIntersectingPiece)] = squaresBetweenSquares[kingPos][attackerPos]
+                        | bitboards::withSquare(attackerPos);
                 }
             }
-            // More than 2 pieces between attacker and king, not pinned pieces on this ray
+            // More than 2 pieces between attacker and king, no pinned pieces on this ray
         }
     }
 
@@ -867,58 +775,32 @@ namespace movegen
 
     void generateKingMoves(MoveList& moves, const Board& board)
     {
+        using enum PieceKind;
         const PieceColor side = board.sideToMove;
-        Bitboard king = board.bitboards[Piece{PieceKind::KING, side}.index()];
-        const Square i = bitboards::popMSB(king);
+        const Bitboard king = board.bitboards[Piece{KING, side}.index()];
+        const Square i = bitboards::getMSB(king);
         Bitboard attackingSquares = kingAttackingSquares[i];
         attackingSquares &= ~board.getPieces(side);
-        attackingSquares &= pinLines[i];
 
-        const Bitboard opponentAttackingSquares = board.getAttackingSquares(oppositeColor(side));
+        Bitboard opponentAttackingSquares = board.getAttackingSquares(oppositeColor(side));
+        // Generate check evasions when the king moves away from a sliding piece along its attacking diagonal
+        // This is done by generating the attacking squares for sliding pieces as if the king wasn't there
+        const Bitboard allPiecesWithoutKing = board.getPieces() & ~king;
+        const Bitboard enemyBishops = board.bitboards[Piece{BISHOP, oppositeColor(side)}.index()];
+        const Bitboard enemyRooks = board.bitboards[Piece{ROOK, oppositeColor(side)}.index()];
+        const Bitboard enemyQueens = board.bitboards[Piece{QUEEN, oppositeColor(side)}.index()];
+        opponentAttackingSquares |= getPieceAttackingSquares<BISHOP>(allPiecesWithoutKing, enemyBishops);
+        opponentAttackingSquares |= getPieceAttackingSquares<ROOK>(allPiecesWithoutKing, enemyRooks);
+        opponentAttackingSquares |= getPieceAttackingSquares<QUEEN>(allPiecesWithoutKing, enemyQueens);
+
         // Prevent the king from moving into check
         attackingSquares &= ~opponentAttackingSquares;
 
         while (attackingSquares != 0)
         {
             const Square targetSquare = bitboards::popMSB(attackingSquares);
-            // TODO: Improve
-            if (isRayCheck)
-            {
-                /*
-                Check that the square the king is moving to is still not attacked after the move. This can happen
-                when moving away from a sliding piece along its attack ray, as the square behind the king
-                wouldn't be attacked since the attacking squares would only be recomputed after the move. For
-                example, in "k7/8/8/2q5/8/4K3/8/8 w", Kf2 is generated as a legal move, even though the king
-                would still be in check.
-                */
-                using enum Direction;
-                using std::ranges::find;
-                if ((find(rayCheckDirections, NORTH) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<
-                            int>(SOUTH))
-                    || (find(rayCheckDirections, SOUTH) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(NORTH))
-                    || (find(rayCheckDirections, WEST) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(EAST))
-                    || (find(rayCheckDirections, EAST) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(WEST))
-                    || (find(rayCheckDirections, NORTHWEST) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(SOUTHEAST))
-                    || (find(rayCheckDirections, NORTHEAST) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(SOUTHWEST))
-                    || (find(rayCheckDirections, SOUTHWEST) != rayCheckDirections.end() && targetSquare == i +
-                        static_cast<int>(NORTHEAST))
-                    || (find(rayCheckDirections, SOUTHEAST) != rayCheckDirections.end() && targetSquare == i
-                        +
-                        static_cast<int>(NORTHWEST)))
-                {
-                    continue;
-                }
-            }
-
             moves.emplace_back(i, targetSquare, MoveFlag::None);
         }
-
 
         // Castling
         if (!board.isSideInCheck(side))
@@ -974,16 +856,13 @@ namespace movegen
     MoveList generateLegalMoves(Board& board)
     {
         MoveList moves;
-        isRayCheck = false;
-        rayCheckDirections.clear();
 
         const PieceColor sideToMove = board.sideToMove;
         // Squares to which a piece other than the king can move to block a check
+        computePinLinesAndSlidingCheckers(board, sideToMove);
         const Bitboard checkResolutions = board.isSideInCheck(sideToMove)
                                               ? checkResolutionSquares(board)
                                               : bitboards::ALL_SQUARES;
-
-        computePinLines(board, sideToMove);
 
         generatePawnMoves(moves, board, checkResolutions);
         generateKnightMoves(moves, board, checkResolutions);

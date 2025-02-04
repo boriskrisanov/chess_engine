@@ -14,6 +14,9 @@ namespace bitboards
         return static_cast<Bitboard>(1) << 63 - square;
     }
 
+    /**
+     * Returns the index of the most significant bit and removes it from the bitboard
+     */
     inline Square popMSB(Bitboard& bitboard)
     {
         const Square index = std::countl_zero(bitboard);
@@ -21,11 +24,17 @@ namespace bitboards
         return index;
     }
 
+    /**
+     * Returns the index of the most significant bit
+     */
     inline Square getMSB(Bitboard bitboard)
     {
         return std::countl_zero(bitboard);
     }
 
+    /**
+     * Returns the index of the most significant bit
+     */
     inline Square getLSB(Bitboard bitboard)
     {
         return 63 - std::countr_zero(bitboard);
