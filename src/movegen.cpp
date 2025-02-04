@@ -880,7 +880,8 @@ namespace movegen
 
         while (attackingSquares != 0)
         {
-            Square targetSquare = bitboards::popMSB(attackingSquares);
+            const Square targetSquare = bitboards::popMSB(attackingSquares);
+            // TODO: Improve
             if (isRayCheck)
             {
                 /*

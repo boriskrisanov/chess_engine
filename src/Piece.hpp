@@ -22,26 +22,10 @@ enum class PieceColor : uint8_t
     BLACK = 0b00001000
 };
 
-// inline PieceKind pieceKind(Piece piece)
-// {
-//     return piece & 0b00000111;
-// }
-//
-// inline PieceColor pieceColor(Piece piece)
-// {
-//     return piece & 0b00001000;
-// }
-//
 inline PieceColor oppositeColor(PieceColor color)
 {
     return static_cast<PieceColor>(static_cast<uint8_t>(color) ^ 0b00001000);
 }
-
-//
-// inline bool isNone(Piece piece)
-// {
-//     return pieceKind(piece) == NONE;
-// }
 
 struct Piece
 {

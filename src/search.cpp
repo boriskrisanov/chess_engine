@@ -122,7 +122,7 @@ int moveScore(const Board& board, const Move& move)
     return score;
 }
 
-void orderMoves(Board& board, MoveList& moves)
+void orderMoves(const Board& board, MoveList& moves)
 {
     for (Move& move : moves)
     {
@@ -262,7 +262,7 @@ int qSearch(Board& board, int alpha, int beta)
     MoveList captures = board.getLegalCaptures();
     orderMoves(board, captures);
 
-    for (Move move : captures)
+    for (const Move move : captures)
     {
         board.makeMove(move);
         eval = -qSearch(board, -beta, -alpha);

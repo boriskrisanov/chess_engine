@@ -14,9 +14,7 @@ struct BoardState
 {
     int8_t enPassantTargetSquare;
     Bitboard whiteAttackingSquares;
-    Bitboard whitePawnAttackingSquares;
     Bitboard blackAttackingSquares;
-    Bitboard blackPawnAttackingSquares;
     bool whiteCanShortCastle;
     bool whiteCanLongCastle;
     bool blackCanShortCastle;
@@ -34,25 +32,17 @@ public:
     std::array<Bitboard, 14> bitboards{};
     void loadFen(const std::string& fen);
     std::string getFen() const;
-    std::string getPgn();
     void makeMove(Move move);
     void makeMove(const std::string& uciMove);
     void unmakeMove();
     MoveList getLegalMoves();
     MoveList getLegalCaptures();
-    bool isSideInCheckAfterMove(Move move, PieceColor side);
-    bool isPseudoLegalMoveLegal(Move move);
     std::string toString() const;
     std::string uciMoveHistory() const;
     Bitboard getSlidingPieces(PieceColor side) const;
     bool isDraw();
 
     PieceColor sideToMove = PieceColor::WHITE;
-
-    explicit operator std::string() const
-    {
-        return toString();
-    }
 
     Bitboard getPieces(PieceColor color) const
     {
@@ -113,11 +103,6 @@ public:
         return side == PieceColor::WHITE ? whiteAttackingSquares : blackAttackingSquares;
     }
 
-    Bitboard getPawnAttackingSquares(PieceColor side) const
-    {
-        return side == PieceColor::WHITE ? whitePawnAttackingSquares : blackPawnAttackingSquares;
-    }
-
     bool isSquareEmpty(Square square) const
     {
         return board[square].isNone();
@@ -163,9 +148,6 @@ private:
 
     Bitboard whiteAttackingSquares = 0;
     Bitboard blackAttackingSquares = 0;
-
-    Bitboard whitePawnAttackingSquares = 0;
-    Bitboard blackPawnAttackingSquares = 0;
 
     int8_t enPassantTargetSquare = -1;
 

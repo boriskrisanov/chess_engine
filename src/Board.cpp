@@ -144,8 +144,7 @@ string Board::getFen() const
 void Board::makeMove(Move move)
 {
     boardHistory.push(BoardState{
-        enPassantTargetSquare, whiteAttackingSquares, whitePawnAttackingSquares, blackAttackingSquares,
-        blackPawnAttackingSquares, whiteCanShortCastle, whiteCanLongCastle, blackCanShortCastle, blackCanLongCastle,
+        enPassantTargetSquare, whiteAttackingSquares, blackAttackingSquares, whiteCanShortCastle, whiteCanLongCastle, blackCanShortCastle, blackCanLongCastle,
         halfMoveClock
     });
 
@@ -411,8 +410,6 @@ void Board::unmakeMove()
     blackCanShortCastle = boardState.blackCanShortCastle;
     blackCanLongCastle = boardState.blackCanLongCastle;
     halfMoveClock = boardState.halfMoveClock;
-    whitePawnAttackingSquares = boardState.whitePawnAttackingSquares;
-    blackPawnAttackingSquares = boardState.blackPawnAttackingSquares;
 
     const Piece capturedPiece = move.capturedPiece;
 
@@ -521,22 +518,6 @@ MoveList Board::getLegalCaptures()
     return captures;
 }
 
-bool Board::isSideInCheckAfterMove(Move move, PieceColor side)
-{
-    bool isCheck = false;
-
-    makeMove(move);
-    isCheck = isSideInCheck(side);
-    unmakeMove();
-
-    return isCheck;
-}
-
-bool Board::isPseudoLegalMoveLegal(Move move)
-{
-    return !isSideInCheckAfterMove(move, board[move.start()].color());
-}
-
 string Board::toString() const
 {
     string boardString;
@@ -636,7 +617,9 @@ bool Board::isThreefoldRepetition()
     // TODO: There is probably a more efficient way of doing this (update incrementally in make/unmake move?)
     std::unordered_map<uint64_t, uint8_t> repetitions;
     repetitions.reserve(hashHistory.size());
-    for (uint64_t hash : hashHistory) {
+    while (!hashHistory.empty()) {
+        const uint64_t hash = hashHistory.top();
+        hashHistory.pop();
         if (repetitions.contains(hash)) {
             repetitions[hash]++;
         } else {
@@ -664,17 +647,15 @@ void Board::updateAttackingSquares()
     using namespace pieceIndexes;
     whiteAttackingSquares = 0;
     blackAttackingSquares = 0;
-    whitePawnAttackingSquares = movegen::getPawnAttackingSquares(bitboards[WHITE_PAWN], WHITE);
-    blackPawnAttackingSquares = movegen::getPawnAttackingSquares(bitboards[BLACK_PAWN], BLACK);
 
-    whiteAttackingSquares |= whitePawnAttackingSquares;
+    whiteAttackingSquares |= movegen::getPawnAttackingSquares(bitboards[WHITE_PAWN], WHITE);
     whiteAttackingSquares |= movegen::getPieceAttackingSquares<KNIGHT>(getPieces(), bitboards[WHITE_KNIGHT]);
     whiteAttackingSquares |= movegen::getPieceAttackingSquares<BISHOP>(getPieces(), bitboards[WHITE_BISHOP]);
     whiteAttackingSquares |= movegen::getPieceAttackingSquares<ROOK>(getPieces(), bitboards[WHITE_ROOK]);
     whiteAttackingSquares |= movegen::getPieceAttackingSquares<QUEEN>(getPieces(), bitboards[WHITE_QUEEN]);
     whiteAttackingSquares |= movegen::getPieceAttackingSquares<KING>(getPieces(), bitboards[WHITE_KING]);
 
-    blackAttackingSquares |= blackPawnAttackingSquares;
+    blackAttackingSquares |= movegen::getPawnAttackingSquares(bitboards[BLACK_PAWN], BLACK);
     blackAttackingSquares |= movegen::getPieceAttackingSquares<KNIGHT>(getPieces(), bitboards[BLACK_KNIGHT]);
     blackAttackingSquares |= movegen::getPieceAttackingSquares<BISHOP>(getPieces(), bitboards[BLACK_BISHOP]);
     blackAttackingSquares |= movegen::getPieceAttackingSquares<ROOK>(getPieces(), bitboards[BLACK_ROOK]);
