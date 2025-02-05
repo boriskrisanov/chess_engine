@@ -4,6 +4,23 @@
 
 namespace bitboards
 {
+    Square popMSB(Bitboard& bitboard)
+    {
+        const Square index = std::countl_zero(bitboard);
+        bitboard &= ~withSquare(index);
+        return index;
+    }
+
+    Square getMSB(Bitboard bitboard)
+    {
+        return std::countl_zero(bitboard);
+    }
+
+    Square getLSB(Bitboard bitboard)
+    {
+        return 63 - std::countr_zero(bitboard);
+    }
+
     std::vector<Square> squaresOf(Bitboard bitboard)
     {
         std::vector<Square> squares;

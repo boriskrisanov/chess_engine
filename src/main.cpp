@@ -11,7 +11,7 @@ int main()
 {
     Board board;
     board.loadFen(STARTING_POSITION_FEN);
-    // runTests();
+    runTests();
     while (true)
     {
         string command;

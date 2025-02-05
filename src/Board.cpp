@@ -612,14 +612,16 @@ bool Board::isInsufficientMaterial() const
     return true;
 }
 
-bool Board::isThreefoldRepetition()
+bool Board::isThreefoldRepetition() const
 {
     // TODO: There is probably a more efficient way of doing this (update incrementally in make/unmake move?)
     std::unordered_map<uint64_t, uint8_t> repetitions;
-    repetitions.reserve(hashHistory.size());
-    while (!hashHistory.empty()) {
-        const uint64_t hash = hashHistory.top();
-        hashHistory.pop();
+    auto hashHistoryCopy = hashHistory;
+
+    repetitions.reserve(hashHistoryCopy.size());
+    while (!hashHistoryCopy.empty()) {
+        const uint64_t hash = hashHistoryCopy.top();
+        hashHistoryCopy.pop();
         if (repetitions.contains(hash)) {
             repetitions[hash]++;
         } else {

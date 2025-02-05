@@ -11,34 +11,23 @@ namespace bitboards
 {
     constexpr Bitboard withSquare(Square square)
     {
-        return static_cast<Bitboard>(1) << 63 - square;
+        return static_cast<Bitboard>(1) << (63 - square);
     }
 
     /**
      * Returns the index of the most significant bit and removes it from the bitboard
      */
-    inline Square popMSB(Bitboard& bitboard)
-    {
-        const Square index = std::countl_zero(bitboard);
-        bitboard &= ~withSquare(index);
-        return index;
-    }
+    Square popMSB(Bitboard& bitboard);
 
     /**
      * Returns the index of the most significant bit
      */
-    inline Square getMSB(Bitboard bitboard)
-    {
-        return std::countl_zero(bitboard);
-    }
+    Square getMSB(Bitboard bitboard);
 
     /**
      * Returns the index of the most significant bit
      */
-    inline Square getLSB(Bitboard bitboard)
-    {
-        return 63 - std::countr_zero(bitboard);
-    }
+    Square getLSB(Bitboard bitboard);
 
     std::vector<Square> squaresOf(Bitboard bitboard);
     constexpr Bitboard ALL_SQUARES = 0xFFFFFFFFFFFFFFFF;

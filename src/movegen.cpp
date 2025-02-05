@@ -244,7 +244,7 @@ namespace movegen
             {
                 if (((configuration >> i) & 1) != 0)
                 {
-                    finalConfig |= static_cast<Bitboard>(1) << 63 - indexes.at(j);
+                    finalConfig |= static_cast<Bitboard>(1) << (63 - indexes.at(j));
                 }
                 j++;
             }

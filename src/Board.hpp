@@ -140,7 +140,7 @@ public:
 
     bool isStalemate();
     bool isInsufficientMaterial() const;
-    bool isThreefoldRepetition();
+    bool isThreefoldRepetition() const;
     bool isDrawByFiftyMoveRule() const;
 
 private:
