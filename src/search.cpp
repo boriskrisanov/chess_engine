@@ -78,13 +78,18 @@ const TT_Entry* getTransposition(uint64_t hash)
     return value;
 }
 
-void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, int eval, Move bestMove_)
+void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, uint8_t ply, int eval, Move bestMove_)
 {
     if (searchState.interruptSearch)
     {
         return;
     }
     debugStats.ttWrites++;
+    // Correct mate eval
+    if (abs(eval) > 100000)
+    {
+        eval = (abs(eval) + ply) * (eval < 0 ? -1 : 1);
+    }
     transpositionTable.at(index(hash)) = {kind, hash, depth, eval, bestMove_};
 }
 
@@ -154,12 +159,16 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     }
 
     const TT_Entry* ttEntry = getTransposition(board.getHash());
-    // TODO: Correct mate eval for depth
-    if (ttEntry != nullptr && abs(ttEntry->eval) < POSITIVE_INFINITY - 255)
+    if (ttEntry != nullptr)
     {
         if (ttEntry->depth >= depth)
         {
-            const int ttEval = ttEntry->eval;
+            int ttEval = ttEntry->eval;
+            if (abs(ttEval) > 100000)
+            {
+                // Correct mate score
+                ttEval = (abs(ttEval) - ply) * ttEval < 0 ? -1 : 1;
+            }
             if (ttEntry->kind == NodeKind::LOWER_BOUND && ttEval > beta)
             {
                 return ttEval;
@@ -184,7 +193,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
     MoveList moves = board.getLegalMoves();
     orderMoves(board, moves);
 
-    // Assume that no moves will exceed alpha
+    // Assume that no moves will exceed alpha.
     NodeKind nodeKind = NodeKind::UPPER_BOUND;
     Move bestMove_{0, 0, MoveFlag::None};
 
@@ -206,7 +215,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
             // (there is a move the opponent can play to avoid this position, so this move will never be played)
             // This is a lower bound on the true eval because we are exiting the search early and there may be other
             // moves we haven't searched which may be better.
-            storeTransposition(NodeKind::LOWER_BOUND, board.getHash(), depth, beta, bestMove_);
+            storeTransposition(NodeKind::LOWER_BOUND, board.getHash(), depth, ply, beta, bestMove_);
             return beta;
         }
         if (eval > alpha)
@@ -216,7 +225,8 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
             bestMove_ = move;
             alpha = eval;
         }
-        // If eval <= alpha, we don't need to consider this move because we already have a better or equally good move available
+        // If eval <= alpha, we don't need to consider this move because we already have a better or equally good move available.
+        // The eval will be an upper bound because we don't know exactly how much worse this node is than the best possible node, only that it's worse (at most alpha).
     }
 
     if (moves.empty())
@@ -228,17 +238,17 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
         }
         if (board.isSideInCheck(board.sideToMove))
         {
-            // Checkmates closer to the root are better, so they should have a lower score
+            // Checkmates closer to the root are better, so they should have a lower score (a lower score for the losing side is better for the other side)
             // Not doing this causes the engine to make draws and not play the best move, even if it knows that it
             // can be played.
-            int mateEval = NEGATIVE_INFINITY + 255 - depth;
+            int mateEval = NEGATIVE_INFINITY + ply;
             return mateEval;
         }
     }
 
     if (nodeKind == NodeKind::EXACT)
     {
-        storeTransposition(nodeKind, board.getHash(), depth, alpha, bestMove_);
+        storeTransposition(nodeKind, board.getHash(), depth, ply, alpha, bestMove_);
     }
     return alpha;
 }
