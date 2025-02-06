@@ -167,7 +167,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
             if (abs(ttEval) > 100000)
             {
                 // Correct mate score
-                ttEval = (abs(ttEval) - ply) * ttEval < 0 ? -1 : 1;
+                ttEval = (abs(ttEval) - ply) * (ttEval < 0 ? -1 : 1);
             }
             if (ttEntry->kind == NodeKind::LOWER_BOUND && ttEval > beta)
             {
