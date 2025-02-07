@@ -14,63 +14,76 @@ using enum PieceColor;
 
 void Board::loadFen(const string& fen)
 {
-    hashHistory = {};
-    for (int i = 0; i < 64; i++)
+    if (!fen.contains("K") || !fen.contains("k"))
     {
-        board[i] = Piece{};
-    }
-    // Reset bitboards
-    bitboards = {};
-    for (Bitboard& bitboard : bitboards)
-    {
-        bitboard = 0;
+        throw std::invalid_argument{"Invalid FEN"};
     }
 
-    // TODO: Allow FEN strings with only some information
-    //  (Only placement info is needed, everything else can be set to default)
-    string placement = splitString(fen, " ")[0];
-    const string sideToMove = splitString(fen, " ")[1];
-    const string castling = splitString(fen, " ")[2];
-    const string enPassantTargetSquare = splitString(fen, " ")[3];
-    const string halfMoveClock = splitString(fen, " ")[4];
-    string fullMoveNumber = splitString(fen, " ")[5];
-
-    placement = std::regex_replace(placement, std::regex("/"), "");
-
-    int i = 0;
-
-    for (const char c : placement)
+    try
     {
-        if (isdigit(c))
+        hashHistory = {};
+        for (int i = 0; i < 64; i++)
         {
-            const int n = atoi(string{c}.c_str());
-            i += n - 1;
+            board[i] = Piece{};
+        }
+        // Reset bitboards
+        bitboards = {};
+        for (Bitboard& bitboard : bitboards)
+        {
+            bitboard = 0;
+        }
+
+        // TODO: Allow FEN strings with only some information
+        //  (Only placement info is needed, everything else can be set to default)
+        string placement = splitString(fen, " ")[0];
+        const string sideToMove = splitString(fen, " ")[1];
+        const string castling = splitString(fen, " ")[2];
+        const string enPassantTargetSquare = splitString(fen, " ")[3];
+        const string halfMoveClock = splitString(fen, " ")[4];
+        string fullMoveNumber = splitString(fen, " ")[5];
+
+        placement = std::regex_replace(placement, std::regex("/"), "");
+
+        int i = 0;
+
+        for (const char c : placement)
+        {
+            if (isdigit(c))
+            {
+                const int n = atoi(string{c}.c_str());
+                i += n - 1;
+            }
+            else
+            {
+                board[i] = Piece{c};
+                addPiece(board[i], i);
+            }
+            i++;
+        }
+
+        whiteCanShortCastle = castling.contains("K");
+        whiteCanLongCastle = castling.contains("Q");
+        blackCanShortCastle = castling.contains("k");
+        blackCanLongCastle = castling.contains("q");
+
+        if (enPassantTargetSquare == "-")
+        {
+            this->enPassantTargetSquare = -1;
         }
         else
         {
-            board[i] = Piece{c};
-            addPiece(board[i], i);
+            this->enPassantTargetSquare = static_cast<int8_t>(square::fromString(enPassantTargetSquare));
         }
-        i++;
+
+        this->sideToMove = sideToMove == "w" ? WHITE : BLACK;
+
+        this->halfMoveClock = std::stoi(halfMoveClock);
     }
-
-    whiteCanShortCastle = castling.contains("K");
-    whiteCanLongCastle = castling.contains("Q");
-    blackCanShortCastle = castling.contains("k");
-    blackCanLongCastle = castling.contains("q");
-
-    if (enPassantTargetSquare == "-")
+    catch (...)
     {
-        this->enPassantTargetSquare = -1;
+        // TODO: Not great but fine for now
+        throw std::invalid_argument{"Invalid FEN"};
     }
-    else
-    {
-        this->enPassantTargetSquare = static_cast<int8_t>(square::fromString(enPassantTargetSquare));
-    }
-
-    this->sideToMove = sideToMove == "w" ? WHITE : BLACK;
-
-    this->halfMoveClock = std::stoi(halfMoveClock);
 
     updateAttackingSquares();
     hashHistory.push(hash());
@@ -144,7 +157,8 @@ string Board::getFen() const
 void Board::makeMove(Move move)
 {
     boardHistory.push(BoardState{
-        enPassantTargetSquare, whiteAttackingSquares, blackAttackingSquares, whiteCanShortCastle, whiteCanLongCastle, blackCanShortCastle, blackCanLongCastle,
+        enPassantTargetSquare, whiteAttackingSquares, blackAttackingSquares, whiteCanShortCastle, whiteCanLongCastle,
+        blackCanShortCastle, blackCanLongCastle,
         halfMoveClock
     });
 
@@ -619,15 +633,20 @@ bool Board::isThreefoldRepetition() const
     auto hashHistoryCopy = hashHistory;
 
     repetitions.reserve(hashHistoryCopy.size());
-    while (!hashHistoryCopy.empty()) {
+    while (!hashHistoryCopy.empty())
+    {
         const uint64_t hash = hashHistoryCopy.top();
         hashHistoryCopy.pop();
-        if (repetitions.contains(hash)) {
+        if (repetitions.contains(hash))
+        {
             repetitions[hash]++;
-        } else {
+        }
+        else
+        {
             repetitions[hash] = 1;
         }
-        if (repetitions[hash] >= 3) {
+        if (repetitions[hash] >= 3)
+        {
             return true;
         }
     }

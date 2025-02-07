@@ -32,7 +32,13 @@ int main()
                     remainingCommand = splitString(fen, " moves ")[1];
                     fen = splitString(fen, " moves ")[0];
                 }
-                board.loadFen(fen);
+                try
+                {
+                    board.loadFen(fen);
+                } catch (std::invalid_argument& e)
+                {
+                    std::cout << e.what() << "\n";
+                }
             }
             else if (mode == "startpos")
             {
