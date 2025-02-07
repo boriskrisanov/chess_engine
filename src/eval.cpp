@@ -51,9 +51,23 @@ const std::array<int, 64> whiteKingOpeningWeights = {
     5, 5, 2, 0, 0, 2, 5, 5
 };
 
+const std::array<int, 64> blackKingEndgameWeights = {
+    5, 4, 4, 4, 4, 4, 4, 5,
+    4, 3, 3, 3, 3, 3, 3, 4,
+    4, 3, 0, 0, 0, 0, 3, 4,
+    4, 3, 0, 0, 0, 0, 3, 4,
+    4, 3, 0, 0, 0, 0, 3, 4,
+    4, 3, 0, 0, 0, 0, 3, 4,
+    4, 3, 3, 3, 3, 3, 3, 4,
+    5, 4, 4, 4, 4, 4, 4, 5
+};
+
 const std::array<int, 64> blackPawnOpeningWeights = switchOpeningWeightSide(whitePawnOpeningWeights);
 const std::array<int, 64> blackKnightOpeningWeights = switchOpeningWeightSide(whiteKnightOpeningWeights);
 const std::array<int, 64> blackKingOpeningWeights = switchOpeningWeightSide(whiteKingOpeningWeights);
+
+// The weights are symmetrical around the center, so this simply inverts the sign
+const std::array<int, 64> whiteKingEndgameWeights = switchOpeningWeightSide(blackKingEndgameWeights);
 
 uint16_t pieceValue(PieceKind kind)
 {
@@ -74,24 +88,28 @@ uint16_t pieceValue(PieceKind kind)
     }
 }
 
-int materialImbalance(const Board& board)
+int whiteMaterial(const Board& board)
 {
     using namespace pieceIndexes;
-    int eval = 0;
+    int m = 0;
+    m += std::popcount(board.bitboards[WHITE_PAWN]) * PAWN_VALUE;
+    m += std::popcount(board.bitboards[WHITE_KNIGHT]) * KNIGHT_VALUE;
+    m += std::popcount(board.bitboards[WHITE_BISHOP]) * BISHOP_VALUE;
+    m += std::popcount(board.bitboards[WHITE_ROOK]) * ROOK_VALUE;
+    m += std::popcount(board.bitboards[WHITE_QUEEN]) * QUEEN_VALUE;
+    return m;
+}
 
-    eval += std::popcount(board.bitboards[WHITE_PAWN]) * PAWN_VALUE;
-    eval += std::popcount(board.bitboards[WHITE_KNIGHT]) * KNIGHT_VALUE;
-    eval += std::popcount(board.bitboards[WHITE_BISHOP]) * BISHOP_VALUE;
-    eval += std::popcount(board.bitboards[WHITE_ROOK]) * ROOK_VALUE;
-    eval += std::popcount(board.bitboards[WHITE_QUEEN]) * QUEEN_VALUE;
-
-    eval -= std::popcount(board.bitboards[BLACK_PAWN]) * PAWN_VALUE;
-    eval -= std::popcount(board.bitboards[BLACK_KNIGHT]) * KNIGHT_VALUE;
-    eval -= std::popcount(board.bitboards[BLACK_BISHOP]) * BISHOP_VALUE;
-    eval -= std::popcount(board.bitboards[BLACK_ROOK]) * ROOK_VALUE;
-    eval -= std::popcount(board.bitboards[BLACK_QUEEN]) * QUEEN_VALUE;
-
-    return eval;
+int blackMaterial(const Board& board)
+{
+    using namespace pieceIndexes;
+    int m = 0;
+    m += std::popcount(board.bitboards[BLACK_PAWN]) * PAWN_VALUE;
+    m += std::popcount(board.bitboards[BLACK_KNIGHT]) * KNIGHT_VALUE;
+    m += std::popcount(board.bitboards[BLACK_BISHOP]) * BISHOP_VALUE;
+    m += std::popcount(board.bitboards[BLACK_ROOK]) * ROOK_VALUE;
+    m += std::popcount(board.bitboards[BLACK_QUEEN]) * QUEEN_VALUE;
+    return m;
 }
 
 int openingSquareWeights(const Board& board)
@@ -117,24 +135,32 @@ int openingSquareWeights(const Board& board)
     return eval;
 }
 
+int endgameEval(const Board& board)
+{
+    // TODO: Improve
+    using namespace pieceIndexes;
+    int eval = 0;
+
+    const bool whiteHasSlidingPieces = (board.bitboards[WHITE_ROOK] | board.bitboards[WHITE_BISHOP] | board.bitboards[WHITE_QUEEN]) != 0;
+    const bool blackHasSlidingPieces = (board.bitboards[BLACK_ROOK] | board.bitboards[BLACK_BISHOP] | board.bitboards[BLACK_QUEEN]) != 0;
+    const int whiteKingPos = bitboards::getMSB(board.bitboards[WHITE_KING]);
+    const int blackKingPos = bitboards::getMSB(board.bitboards[BLACK_KING]);
+
+    eval += whiteKingEndgameWeights[whiteKingPos] * (blackHasSlidingPieces && !whiteHasSlidingPieces);
+    eval += blackKingEndgameWeights[blackKingPos] * (whiteHasSlidingPieces && !blackHasSlidingPieces);
+
+    const int distanceBetweenKings = abs(square::file(whiteKingPos) - square::file(blackKingPos)) + abs(square::rank(whiteKingPos) - square::rank(blackKingPos));
+
+    eval -= (16 - distanceBetweenKings) * (blackHasSlidingPieces && !whiteHasSlidingPieces);
+    eval += (16 - distanceBetweenKings) * (!blackHasSlidingPieces && whiteHasSlidingPieces);
+
+    return eval;
+}
+
 double openingWeight(const Board& board)
 {
     // This isn't very accurate, but it should be fine for now (ported from Java version)
-    using namespace pieceIndexes;
-    double totalMaterial = 0;
-
-    totalMaterial += std::popcount(board.bitboards[WHITE_PAWN]) * PAWN_VALUE;
-    totalMaterial += std::popcount(board.bitboards[WHITE_KNIGHT]) * KNIGHT_VALUE;
-    totalMaterial += std::popcount(board.bitboards[WHITE_BISHOP]) * BISHOP_VALUE;
-    totalMaterial += std::popcount(board.bitboards[WHITE_ROOK]) * ROOK_VALUE;
-    totalMaterial += std::popcount(board.bitboards[WHITE_QUEEN]) * QUEEN_VALUE;
-
-    totalMaterial += std::popcount(board.bitboards[BLACK_PAWN]) * PAWN_VALUE;
-    totalMaterial += std::popcount(board.bitboards[BLACK_KNIGHT]) * KNIGHT_VALUE;
-    totalMaterial += std::popcount(board.bitboards[BLACK_BISHOP]) * BISHOP_VALUE;
-    totalMaterial += std::popcount(board.bitboards[BLACK_ROOK]) * ROOK_VALUE;
-    totalMaterial += std::popcount(board.bitboards[BLACK_QUEEN]) * QUEEN_VALUE;
-
+    const double totalMaterial = whiteMaterial(board) + blackMaterial(board);
     return std::max(totalMaterial / 1024 - 2, 0.0);
 }
 
@@ -142,8 +168,9 @@ int staticEval(const Board& board)
 {
     int eval = 0;
 
-    eval += materialImbalance(board);
+    eval += whiteMaterial(board) - blackMaterial(board);
     eval += std::floor(static_cast<double>(openingSquareWeights(board)) * openingWeight(board));
+    eval += std::floor(static_cast<double>(endgameEval(board)));
 
     return eval * (board.sideToMove == PieceColor::WHITE ? 1 : -1);
 }
@@ -152,6 +179,7 @@ void printDebugEval(const Board& board)
 {
     std::cout << "Opening weight: " << openingWeight(board) << "\n";
     std::cout << "Opening piece square table eval: " << openingSquareWeights(board) << "\n";
-    std::cout << "Material imbalance: " << materialImbalance(board) << "\n";
+    std::cout << "Material imbalance: " << whiteMaterial(board) - blackMaterial(board) << "\n";
+    std::cout << "Endgame eval: " << endgameEval(board) << "\n";
     std::cout << "Final eval: " << staticEval(board) * (board.sideToMove == PieceColor::WHITE ? 1 : -1) << "\n";
 }
