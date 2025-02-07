@@ -14,11 +14,6 @@ using enum PieceColor;
 
 void Board::loadFen(const string& fen)
 {
-    if (!fen.contains("K") || !fen.contains("k"))
-    {
-        throw std::invalid_argument{"Invalid FEN"};
-    }
-
     try
     {
         hashHistory = {};
@@ -82,6 +77,10 @@ void Board::loadFen(const string& fen)
     catch (...)
     {
         // TODO: Not great but fine for now
+        throw std::invalid_argument{"Invalid FEN"};
+    }
+    if (bitboards[pieceIndexes::WHITE_KING] == 0 || bitboards[pieceIndexes::BLACK_KING] == 0)
+    {
         throw std::invalid_argument{"Invalid FEN"};
     }
 
