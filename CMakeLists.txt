@@ -48,7 +48,7 @@ elseif (BUILD_MODE STREQUAL "executable")
             src/eval.hpp
             src/MoveFlag.hpp
             src/MoveList.hpp
-            src/MagicFinder.hpp
+            src/MagicSearcher.hpp
     )
 else ()
     message(FATAL_ERROR "BUILD_MODE is invalid, see CMakeLists.txt for valid options")

@@ -13,4 +13,8 @@ namespace movegen
     Bitboard getPawnAttackingSquares(Bitboard pawns, PieceColor side);
     template <PieceKind Kind>
     Bitboard getPieceAttackingSquares(Bitboard allPieces, Bitboard pieces);
+
+    std::array<Bitboard, 64> getBishopBlockerMasks();
+    std::array<Bitboard, 64> getRookBlockerMasks();
+    std::vector<Bitboard> possibleBlockerPositions(Bitboard blockerMask);
 }

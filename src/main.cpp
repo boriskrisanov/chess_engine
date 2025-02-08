@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "eval.hpp"
+#include "MagicSearcher.hpp"
 #include "search.hpp"
 
 using std::cin, std::cout, std::string;
@@ -11,7 +12,6 @@ int main()
 {
     Board board;
     board.loadFen(STARTING_POSITION_FEN);
-    // runTests();
     while (true)
     {
         string command;
@@ -111,6 +111,13 @@ int main()
         else if (command == "test")
         {
             runTests();
+        }
+        else if (command == "magics")
+        {
+            int iterations;
+            std::cin >> iterations;
+            findRookMagics(iterations);
+            findBishopMagics(iterations);
         }
         else if (command == "quit")
         {
