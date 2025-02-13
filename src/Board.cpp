@@ -30,12 +30,12 @@ void Board::loadFen(const string& fen)
 
         // TODO: Allow FEN strings with only some information
         //  (Only placement info is needed, everything else can be set to default)
-        string placement = splitString(fen, " ")[0];
-        const string sideToMove = splitString(fen, " ")[1];
-        const string castling = splitString(fen, " ")[2];
-        const string enPassantTargetSquare = splitString(fen, " ")[3];
-        const string halfMoveClock = splitString(fen, " ")[4];
-        string fullMoveNumber = splitString(fen, " ")[5];
+        string placement = splitString(fen, " ").at(0);
+        const string sideToMove = splitString(fen, " ").at(1);
+        const string castling = splitString(fen, " ").at(2);
+        const string enPassantTargetSquare = splitString(fen, " ").at(3);
+        const string halfMoveClock = splitString(fen, " ").at(4);
+        string fullMoveNumber = splitString(fen, " ").at(5);
 
         placement = std::regex_replace(placement, std::regex("/"), "");
 
