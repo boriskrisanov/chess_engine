@@ -74,11 +74,6 @@ const TT_Entry* getTransposition(uint64_t hash)
         // Empty node or index collision
         return nullptr;
     }
-    if (abs(value->eval) > 100000)
-    {
-        // TODO: Fix
-        return nullptr;
-    }
     debugStats.ttHits++;
     return value;
 }
@@ -98,6 +93,18 @@ void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, uint8_t ply
     transpositionTable.at(index(hash)) = {kind, hash, depth, eval, bestMove_};
 }
 
+int endgameMoveScore(Board& board, const Move& move)
+{
+    int s = 0;
+    board.makeMove(move);
+    if (board.isCheck())
+    {
+        s += 500;
+    }
+    board.unmakeMove();
+    return s;
+}
+
 int moveScore(const Board& board, const Move& move)
 {
     int score = 0;
@@ -115,7 +122,8 @@ int moveScore(const Board& board, const Move& move)
         if (move.moveFlag() == MoveFlag::PromotionQueen)
         {
             score += QUEEN_VALUE;
-        } else if (move.moveFlag() == MoveFlag::PromotionRook)
+        }
+        else if (move.moveFlag() == MoveFlag::PromotionRook)
         {
             score += ROOK_VALUE;
         }
@@ -132,7 +140,7 @@ int moveScore(const Board& board, const Move& move)
     return score;
 }
 
-void orderMoves(const Board& board, MoveList& moves)
+void orderMoves(Board& board, MoveList& moves)
 {
     for (Move& move : moves)
     {
@@ -142,7 +150,14 @@ void orderMoves(const Board& board, MoveList& moves)
             move.score = std::numeric_limits<int>::max();
             continue;
         }
-        move.score = moveScore(board, move);
+        if (whiteMaterial(board) + blackMaterial(board) < 1200)
+        {
+            move.score = endgameMoveScore(board, move);
+        }
+        else
+        {
+            move.score = moveScore(board, move);
+        }
     }
     std::ranges::sort(moves, [](const Move& m1, const Move& m2)
     {
