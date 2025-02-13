@@ -74,6 +74,11 @@ const TT_Entry* getTransposition(uint64_t hash)
         // Empty node or index collision
         return nullptr;
     }
+    if (abs(value->eval) > 100000)
+    {
+        // TODO: Fix
+        return nullptr;
+    }
     debugStats.ttHits++;
     return value;
 }
