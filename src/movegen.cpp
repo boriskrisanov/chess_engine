@@ -78,8 +78,7 @@ namespace movegen
         case Direction::SOUTHEAST:
             return edgeDistances[square].SOUTHEAST;
         }
-        // Impossible since the switch handles all cases. This is here just to get rid of the compiler warning.
-        return 0;
+        std::unreachable();
     }
 
     constexpr Bitboard rayAttackingSquares(Bitboard blockers, Square position, const vector<Direction>& directions)
