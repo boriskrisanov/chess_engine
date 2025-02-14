@@ -1,6 +1,6 @@
 #include "tests.hpp"
 #include <iostream>
-
+#include <string>
 #include "eval.hpp"
 #include "MagicSearcher.hpp"
 #include "search.hpp"
