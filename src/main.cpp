@@ -2,8 +2,10 @@
 #include <iostream>
 #include <string>
 #include "eval.hpp"
-#include "MagicSearcher.hpp"
+#include "magic_searcher.hpp"
 #include "search.hpp"
+#include "Board.hpp"
+#include "utils.hpp"
 
 using std::cin, std::cout, std::string;
 using std::chrono::system_clock;

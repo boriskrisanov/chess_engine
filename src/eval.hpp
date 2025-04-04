@@ -1,6 +1,6 @@
 #pragma once
-#include <cstdint>
 
+#include <cstdint>
 #include "Piece.hpp"
 
 class Board;

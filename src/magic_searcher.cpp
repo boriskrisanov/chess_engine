@@ -1,28 +1,14 @@
-#pragma once
-
-#include <array>
+#include "magic_searcher.hpp"
+#include "movegen.hpp"
 #include <iostream>
 #include <random>
 #include <unordered_set>
-
-#include "movegen.hpp"
 
 static std::random_device randomDevice;
 static std::mt19937_64 rng{randomDevice()};
 static std::uniform_int_distribution<uint64_t> uniformIntDistribution{0, std::numeric_limits<uint64_t>::max()};
 
-struct Magics
-{
-    std::array<uint64_t, 64> magics{};
-    std::array<int, 64> shifts{};
-};
-
-/**
- * For each square, find a unique magic and shift value that allows for a unique mapping between the 64-bit bitboard
- * and a smaller value, which can be used as an array index in an array of attacking squares. The aim is to maximise
- * the shift in order to minimise the range of indexes and hence the array size.
- */
-inline Magics findMagics(size_t iterations, const std::vector<std::vector<uint64_t>>& blockerPositions)
+Magics findMagics(size_t iterations, const std::vector<std::vector<uint64_t>> &blockerPositions)
 {
     Magics m{};
     std::unordered_set<uint64_t> usedKeys;
@@ -55,7 +41,7 @@ inline Magics findMagics(size_t iterations, const std::vector<std::vector<uint64
     return m;
 }
 
-inline void printMagics(Magics m, std::string pieceName)
+void printMagics(Magics m, std::string pieceName)
 {
     std::string magicsOutput;
     magicsOutput += "constexpr array<uint64_t, 64> " + pieceName + "_MAGICS{";
@@ -91,7 +77,7 @@ inline void printMagics(Magics m, std::string pieceName)
     std::cout << "\nTotal size: " << totalBits << " bits \n\n";
 }
 
-inline void findRookMagics(size_t iterations)
+void findRookMagics(size_t iterations)
 {
     std::vector<std::vector<uint64_t>> blockerPositions;
     for (int i = 0; i < 64; i++)
@@ -102,7 +88,7 @@ inline void findRookMagics(size_t iterations)
     printMagics(m, "ROOK");
 }
 
-inline void findBishopMagics(size_t iterations)
+void findBishopMagics(size_t iterations)
 {
     std::vector<std::vector<uint64_t>> blockerPositions;
     for (int i = 0; i < 64; i++)

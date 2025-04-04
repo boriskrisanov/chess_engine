@@ -42,13 +42,15 @@ elseif (BUILD_MODE STREQUAL "executable")
             src/Square.hpp
             src/utils.hpp
             src/tests.hpp
+            src/tests.cpp   
             src/search.cpp
             src/search.hpp
             src/eval.cpp
             src/eval.hpp
             src/MoveFlag.hpp
             src/MoveList.hpp
-            src/MagicSearcher.hpp
+            src/magic_searcher.hpp
+            src/magic_searcher.cpp
     )
 else ()
     message(FATAL_ERROR "BUILD_MODE is invalid, see CMakeLists.txt for valid options")
