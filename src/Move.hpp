@@ -5,7 +5,6 @@
 #include "Square.hpp"
 #include <cstdint>
 
-
 class Board;
 
 class Move

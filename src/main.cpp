@@ -7,7 +7,6 @@
 #include <iostream>
 #include <string>
 
-
 using std::cin, std::cout, std::string;
 using std::chrono::system_clock;
 

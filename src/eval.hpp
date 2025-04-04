@@ -3,7 +3,6 @@
 #include "Piece.hpp"
 #include <cstdint>
 
-
 class Board;
 
 constexpr int PAWN_VALUE = 100;

@@ -6,7 +6,6 @@
 #include <thread>
 #include <vector>
 
-
 using std::vector;
 
 // +1 and -1 to avoid overflow when multiplying by -1

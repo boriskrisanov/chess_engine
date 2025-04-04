@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cctype>
-#include <string>
-#include <cstdint>
 #include "MoveFlag.hpp"
+#include <cctype>
+#include <cstdint>
+#include <string>
 
 enum class PieceKind : uint8_t
 {
@@ -141,23 +141,23 @@ struct Piece
         return data;
     }
 
-private:
+  private:
     uint8_t data = static_cast<uint8_t>(PieceKind::NONE);
 };
 
 namespace pieceIndexes
 {
-    const uint8_t WHITE_PAWN = Piece{PieceKind::PAWN, PieceColor::WHITE}.index();
-    const uint8_t WHITE_KNIGHT = Piece{PieceKind::KNIGHT, PieceColor::WHITE}.index();
-    const uint8_t WHITE_BISHOP = Piece{PieceKind::BISHOP, PieceColor::WHITE}.index();
-    const uint8_t WHITE_ROOK = Piece{PieceKind::ROOK, PieceColor::WHITE}.index();
-    const uint8_t WHITE_QUEEN = Piece{PieceKind::QUEEN, PieceColor::WHITE}.index();
-    const uint8_t WHITE_KING = Piece{PieceKind::KING, PieceColor::WHITE}.index();
+const uint8_t WHITE_PAWN = Piece{PieceKind::PAWN, PieceColor::WHITE}.index();
+const uint8_t WHITE_KNIGHT = Piece{PieceKind::KNIGHT, PieceColor::WHITE}.index();
+const uint8_t WHITE_BISHOP = Piece{PieceKind::BISHOP, PieceColor::WHITE}.index();
+const uint8_t WHITE_ROOK = Piece{PieceKind::ROOK, PieceColor::WHITE}.index();
+const uint8_t WHITE_QUEEN = Piece{PieceKind::QUEEN, PieceColor::WHITE}.index();
+const uint8_t WHITE_KING = Piece{PieceKind::KING, PieceColor::WHITE}.index();
 
-    const uint8_t BLACK_PAWN = Piece{PieceKind::PAWN, PieceColor::BLACK}.index();
-    const uint8_t BLACK_KNIGHT = Piece{PieceKind::KNIGHT, PieceColor::BLACK}.index();
-    const uint8_t BLACK_BISHOP = Piece{PieceKind::BISHOP, PieceColor::BLACK}.index();
-    const uint8_t BLACK_ROOK = Piece{PieceKind::ROOK, PieceColor::BLACK}.index();
-    const uint8_t BLACK_QUEEN = Piece{PieceKind::QUEEN, PieceColor::BLACK}.index();
-    const uint8_t BLACK_KING = Piece{PieceKind::KING, PieceColor::BLACK}.index();
-}
+const uint8_t BLACK_PAWN = Piece{PieceKind::PAWN, PieceColor::BLACK}.index();
+const uint8_t BLACK_KNIGHT = Piece{PieceKind::KNIGHT, PieceColor::BLACK}.index();
+const uint8_t BLACK_BISHOP = Piece{PieceKind::BISHOP, PieceColor::BLACK}.index();
+const uint8_t BLACK_ROOK = Piece{PieceKind::ROOK, PieceColor::BLACK}.index();
+const uint8_t BLACK_QUEEN = Piece{PieceKind::QUEEN, PieceColor::BLACK}.index();
+const uint8_t BLACK_KING = Piece{PieceKind::KING, PieceColor::BLACK}.index();
+} // namespace pieceIndexes

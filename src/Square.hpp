@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <string>
 
-
 typedef uint8_t Square;
 
 namespace square

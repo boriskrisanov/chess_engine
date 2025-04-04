@@ -1,12 +1,11 @@
 #include "tests.hpp"
-
-#include <iostream>
-#include <map>
-
 #include "Board.hpp"
 #include "Move.hpp"
 #include "utils.hpp"
 #include <chrono>
+#include <iostream>
+#include <map>
+
 
 int passedTests = 0;
 int failedTests = 0;

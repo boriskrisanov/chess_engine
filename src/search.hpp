@@ -4,7 +4,6 @@
 #include "Piece.hpp"
 #include <chrono>
 
-
 struct DebugStats
 {
     uint64_t positionsEvaluated = 0;

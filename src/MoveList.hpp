@@ -1,7 +1,7 @@
 #pragma once
 
-#include <array>
 #include "Move.hpp"
+#include <array>
 
 struct MoveList
 {
@@ -25,12 +25,12 @@ struct MoveList
         return count == 0;
     }
 
-    Move* begin()
+    Move *begin()
     {
         return &moves[0];
     }
 
-    Move* end()
+    Move *end()
     {
         return &moves[count];
     }
@@ -40,7 +40,7 @@ struct MoveList
         return count;
     }
 
-private:
+  private:
     std::array<Move, 218> moves;
     uint8_t count = 0;
 };

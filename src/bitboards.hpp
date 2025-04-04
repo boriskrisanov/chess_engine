@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <vector>
 
-
 typedef uint64_t Bitboard;
 
 namespace bitboards

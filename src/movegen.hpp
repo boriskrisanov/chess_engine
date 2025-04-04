@@ -5,7 +5,6 @@
 #include "Piece.hpp"
 #include "bitboards.hpp"
 
-
 class Board;
 
 namespace movegen
