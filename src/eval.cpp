@@ -1,17 +1,16 @@
 #include "eval.hpp"
-
-#include <iostream>
+#include "Board.hpp"
 #include <array>
 #include <cmath>
-#include "Board.hpp"
-#include "search.hpp"
+#include <iostream>
+
 
 std::array<int, 64> switchOpeningWeightSide(std::array<int, 64> weights)
 {
     // Reverse ranks (assuming weights are symmetrical)
     // Array is copied so this is fine
     std::reverse(weights.begin(), weights.end());
-    for (int& weight : weights)
+    for (int &weight : weights)
     {
         weight *= -1;
     }
@@ -26,8 +25,7 @@ const std::array<int, 64> whitePawnOpeningWeights = {
     0, 2, 3, 4, 4, 3, 2, 0,
     1, 1, 1, 1, 1, 1, 1, 1,
     0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0};
 
 const std::array<int, 64> whiteKnightOpeningWeights = {
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -37,8 +35,7 @@ const std::array<int, 64> whiteKnightOpeningWeights = {
     0, 0, 3, 2, 2, 3, 0, 0,
     0, 0, 4, 2, 2, 4, 0, 0,
     0, 0, 0, 2, 2, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0};
 
 const std::array<int, 64> whiteKingOpeningWeights = {
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -48,8 +45,7 @@ const std::array<int, 64> whiteKingOpeningWeights = {
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
-    5, 5, 2, 0, 0, 2, 5, 5
-};
+    5, 5, 2, 0, 0, 2, 5, 5};
 
 const std::array<int, 64> blackKingEndgameWeights = {
     5, 4, 4, 4, 4, 4, 4, 5,
@@ -59,8 +55,7 @@ const std::array<int, 64> blackKingEndgameWeights = {
     4, 3, 0, 0, 0, 0, 3, 4,
     4, 3, 0, 0, 0, 0, 3, 4,
     4, 3, 3, 3, 3, 3, 3, 4,
-    5, 4, 4, 4, 4, 4, 4, 5
-};
+    5, 4, 4, 4, 4, 4, 4, 5};
 
 const std::array<int, 64> blackPawnOpeningWeights = switchOpeningWeightSide(whitePawnOpeningWeights);
 const std::array<int, 64> blackKnightOpeningWeights = switchOpeningWeightSide(whiteKnightOpeningWeights);
@@ -88,7 +83,7 @@ uint16_t pieceValue(PieceKind kind)
     }
 }
 
-int whiteMaterial(const Board& board)
+int whiteMaterial(const Board &board)
 {
     using namespace pieceIndexes;
     int m = 0;
@@ -100,7 +95,7 @@ int whiteMaterial(const Board& board)
     return m;
 }
 
-int blackMaterial(const Board& board)
+int blackMaterial(const Board &board)
 {
     using namespace pieceIndexes;
     int m = 0;
@@ -112,7 +107,7 @@ int blackMaterial(const Board& board)
     return m;
 }
 
-int openingSquareWeights(const Board& board)
+int openingSquareWeights(const Board &board)
 {
     int eval = 0;
 
@@ -135,7 +130,7 @@ int openingSquareWeights(const Board& board)
     return eval;
 }
 
-int endgameEval(const Board& board)
+int endgameEval(const Board &board)
 {
     // TODO: Improve
     using namespace pieceIndexes;
@@ -157,14 +152,14 @@ int endgameEval(const Board& board)
     return eval;
 }
 
-double openingWeight(const Board& board)
+double openingWeight(const Board &board)
 {
     // This isn't very accurate, but it should be fine for now (ported from Java version)
     const double totalMaterial = whiteMaterial(board) + blackMaterial(board);
     return std::max(totalMaterial / 1024 - 2, 0.0);
 }
 
-int staticEval(const Board& board)
+int staticEval(const Board &board)
 {
     int eval = 0;
 
@@ -175,7 +170,7 @@ int staticEval(const Board& board)
     return eval * (board.sideToMove == PieceColor::WHITE ? 1 : -1);
 }
 
-void printDebugEval(const Board& board)
+void printDebugEval(const Board &board)
 {
     std::cout << "Opening weight: " << openingWeight(board) << "\n";
     std::cout << "Opening piece square table eval: " << openingSquareWeights(board) << "\n";

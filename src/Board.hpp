@@ -1,12 +1,12 @@
 #pragma once
 
+#include "Piece.hpp"
+#include "bitboards.hpp"
+#include "movegen.hpp"
 #include <array>
 #include <stack>
 #include <string>
 
-#include "bitboards.hpp"
-#include "movegen.hpp"
-#include "Piece.hpp"
 
 const std::string STARTING_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -22,18 +22,17 @@ struct BoardState
     uint8_t halfMoveClock;
 };
 
-
 /**
  * Represents a full game (including previous states), including piece positions, side to move, castling rights, etc
  */
 class Board
 {
-public:
+  public:
     std::array<Bitboard, 14> bitboards{};
-    void loadFen(const std::string& fen);
+    void loadFen(const std::string &fen);
     std::string getFen() const;
     void makeMove(Move move);
-    void makeMove(const std::string& uciMove);
+    void makeMove(const std::string &uciMove);
     void unmakeMove();
     MoveList getLegalMoves();
     MoveList getLegalCaptures();
@@ -51,17 +50,17 @@ public:
         using enum PieceColor;
         return color == WHITE
                    ? bitboards[Piece{PAWN, WHITE}.index()] |
-                   bitboards[Piece{KNIGHT, WHITE}.index()] |
-                   bitboards[Piece{BISHOP, WHITE}.index()] |
-                   bitboards[Piece{ROOK, WHITE}.index()] |
-                   bitboards[Piece{QUEEN, WHITE}.index()] |
-                   bitboards[Piece{KING, WHITE}.index()]
+                         bitboards[Piece{KNIGHT, WHITE}.index()] |
+                         bitboards[Piece{BISHOP, WHITE}.index()] |
+                         bitboards[Piece{ROOK, WHITE}.index()] |
+                         bitboards[Piece{QUEEN, WHITE}.index()] |
+                         bitboards[Piece{KING, WHITE}.index()]
                    : bitboards[Piece{PAWN, BLACK}.index()] |
-                   bitboards[Piece{KNIGHT, BLACK}.index()] |
-                   bitboards[Piece{BISHOP, BLACK}.index()] |
-                   bitboards[Piece{ROOK, BLACK}.index()] |
-                   bitboards[Piece{QUEEN, BLACK}.index()] |
-                   bitboards[Piece{KING, BLACK}.index()];
+                         bitboards[Piece{KNIGHT, BLACK}.index()] |
+                         bitboards[Piece{BISHOP, BLACK}.index()] |
+                         bitboards[Piece{ROOK, BLACK}.index()] |
+                         bitboards[Piece{QUEEN, BLACK}.index()] |
+                         bitboards[Piece{KING, BLACK}.index()];
     }
 
     Bitboard getPieces() const
@@ -72,8 +71,8 @@ public:
     bool isSideInCheck(PieceColor side) const
     {
         const Bitboard kingBitboard = side == PieceColor::WHITE
-                                    ? bitboards[Piece{PieceKind::KING, PieceColor::WHITE}.index()]
-                                    : bitboards[Piece{PieceKind::KING, PieceColor::BLACK}.index()];
+                                          ? bitboards[Piece{PieceKind::KING, PieceColor::WHITE}.index()]
+                                          : bitboards[Piece{PieceKind::KING, PieceColor::BLACK}.index()];
         const Bitboard squaresAttackedBySide = getAttackingSquares(oppositeColor(side));
         return (squaresAttackedBySide & kingBitboard) != 0;
     }
@@ -143,7 +142,7 @@ public:
     bool isThreefoldRepetition() const;
     bool isDrawByFiftyMoveRule() const;
 
-private:
+  private:
     std::array<Piece, 64> board{};
 
     Bitboard whiteAttackingSquares = 0;

@@ -1,5 +1,4 @@
 #include "bitboards.hpp"
-
 #include <bit>
 
 namespace bitboards

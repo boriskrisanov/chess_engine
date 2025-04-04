@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "Move.hpp"
+#include "Square.hpp"
 
 typedef uint64_t Bitboard;
 

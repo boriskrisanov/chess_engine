@@ -1,18 +1,17 @@
 #include "Board.hpp"
-
+#include "movegen.hpp"
+#include "utils.hpp"
 #include <random>
 #include <regex>
 #include <unordered_map>
 
-#include "movegen.hpp"
-#include "utils.hpp"
 
 using std::string;
 
 using enum PieceKind;
 using enum PieceColor;
 
-void Board::loadFen(const string& fen)
+void Board::loadFen(const string &fen)
 {
     try
     {
@@ -23,7 +22,7 @@ void Board::loadFen(const string& fen)
         }
         // Reset bitboards
         bitboards = {};
-        for (Bitboard& bitboard : bitboards)
+        for (Bitboard &bitboard : bitboards)
         {
             bitboard = 0;
         }
@@ -152,19 +151,17 @@ string Board::getFen() const
     return fen;
 }
 
-
 void Board::makeMove(Move move)
 {
     boardHistory.push(BoardState{
         enPassantTargetSquare, whiteAttackingSquares, blackAttackingSquares, whiteCanShortCastle, whiteCanLongCastle,
         blackCanShortCastle, blackCanLongCastle,
-        halfMoveClock
-    });
+        halfMoveClock});
 
     const Piece movedPiece = board[move.start()];
     Piece capturedPiece;
     if (move.moveFlag() != MoveFlag::EnPassant)
-    [[likely]]
+        [[likely]]
     {
         capturedPiece = board[move.end()];
     }
@@ -299,7 +296,7 @@ void Board::makeMove(Move move)
     board[move.start()] = Piece{};
 
     if (!move.isPromotion())
-    [[likely]]
+        [[likely]]
     {
         movePiece(movedPiece, capturedPiece, move.start(), move.end());
         board[move.end()] = movedPiece;
@@ -347,7 +344,7 @@ void Board::makeMove(Move move)
     hashHistory.push(newHash);
 }
 
-void Board::makeMove(const std::string& uciMove)
+void Board::makeMove(const std::string &uciMove)
 {
     // TODO: This doesn't handle en passant (?)
     if (uciMove.length() != 4 && uciMove.length() != 5)
@@ -578,10 +575,8 @@ std::string Board::uciMoveHistory() const
 Bitboard Board::getSlidingPieces(PieceColor side) const
 {
     return side == WHITE
-               ? bitboards[pieceIndexes::WHITE_BISHOP] | bitboards[pieceIndexes::WHITE_ROOK] | bitboards[
-                   pieceIndexes::WHITE_QUEEN]
-               : bitboards[pieceIndexes::BLACK_BISHOP] | bitboards[pieceIndexes::BLACK_ROOK] | bitboards[
-                   pieceIndexes::BLACK_QUEEN];
+               ? bitboards[pieceIndexes::WHITE_BISHOP] | bitboards[pieceIndexes::WHITE_ROOK] | bitboards[pieceIndexes::WHITE_QUEEN]
+               : bitboards[pieceIndexes::BLACK_BISHOP] | bitboards[pieceIndexes::BLACK_ROOK] | bitboards[pieceIndexes::BLACK_QUEEN];
 }
 
 bool Board::isStalemate()
@@ -689,7 +684,7 @@ std::array<uint64_t, 12 * 64 + 1 + 4 + 8> generateRandomValues()
     std::mt19937 rng; // NOLINT(*-msc51-cpp)
     std::uniform_int_distribution<uint64_t> uniformIntDistribution;
 
-    for (uint64_t& value : values)
+    for (uint64_t &value : values)
     {
         value = uniformIntDistribution(rng);
     }
