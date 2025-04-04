@@ -1,8 +1,9 @@
 #pragma once
-#include <chrono>
 
 #include "Move.hpp"
 #include "Piece.hpp"
+#include <chrono>
+
 
 struct DebugStats
 {
@@ -21,12 +22,13 @@ struct SearchResult
     int depthSearched;
     DebugStats debugStats;
 
-    SearchResult(PieceColor sideToMove, Move bestMove, int eval, int depthSearched, const DebugStats& debugStats)
+    SearchResult(PieceColor sideToMove, Move bestMove, int eval, int depthSearched, const DebugStats &debugStats)
         : sideToMove(sideToMove), bestMove(bestMove), eval(eval), depthSearched(depthSearched), debugStats(debugStats)
     {
     }
 
-    double standardEval() const {
+    double standardEval() const
+    {
         // Divide by 100 to convert centipawns to pawns
         return static_cast<double>(sideToMove == PieceColor::BLACK ? eval * -1 : eval) / 100;
     }
@@ -34,6 +36,6 @@ struct SearchResult
 
 void resizeTranspositionTable(size_t sizeMB);
 
-SearchResult bestMove(Board& board, uint8_t depth);
-SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit);
+SearchResult bestMove(Board &board, uint8_t depth);
+SearchResult timeLimitedSearch(Board &board, std::chrono::milliseconds timeLimit);
 void resetSearchState();

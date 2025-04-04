@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-
 struct Magics
 {
     std::array<uint64_t, 64> magics{};

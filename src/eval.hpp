@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstdint>
 #include "Piece.hpp"
+#include <cstdint>
+
 
 class Board;
 
@@ -12,7 +13,7 @@ constexpr int ROOK_VALUE = 500;
 constexpr int QUEEN_VALUE = 900;
 
 uint16_t pieceValue(PieceKind kind);
-int staticEval(const Board& board);
-void printDebugEval(const Board& board);
-int whiteMaterial(const Board& board);
-int blackMaterial(const Board& board);
+int staticEval(const Board &board);
+void printDebugEval(const Board &board);
+int whiteMaterial(const Board &board);
+int blackMaterial(const Board &board);

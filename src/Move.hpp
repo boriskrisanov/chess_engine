@@ -1,17 +1,18 @@
 #pragma once
 
+#include "MoveFlag.hpp"
+#include "Piece.hpp"
 #include "Square.hpp"
 #include <cstdint>
-#include "Piece.hpp"
-#include "MoveFlag.hpp"
+
 
 class Board;
 
 class Move
 {
-public:
+  public:
     Move(Square start, Square end, MoveFlag flag);
-    Move(const Board& board, const std::string& uciString);
+    Move(const Board &board, const std::string &uciString);
     Move() = default;
     Square start() const;
     Square end() const;
@@ -23,8 +24,7 @@ public:
 
     bool isPromotion() const
     {
-        return moveFlag() == MoveFlag::PromotionKnight || moveFlag() == MoveFlag::PromotionBishop || moveFlag() ==
-            MoveFlag::PromotionRook || moveFlag() == MoveFlag::PromotionQueen;
+        return moveFlag() == MoveFlag::PromotionKnight || moveFlag() == MoveFlag::PromotionBishop || moveFlag() == MoveFlag::PromotionRook || moveFlag() == MoveFlag::PromotionQueen;
     }
 
     bool isInvalid() const
@@ -39,7 +39,7 @@ public:
         return moveData == rhs.moveData;
     }
 
-private:
+  private:
     uint16_t moveData = 0;
     // 000000 000000 0000
     // 6 bits - start index

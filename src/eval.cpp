@@ -4,7 +4,6 @@
 #include <cmath>
 #include <iostream>
 
-
 std::array<int, 64> switchOpeningWeightSide(std::array<int, 64> weights)
 {
     // Reverse ranks (assuming weights are symmetrical)

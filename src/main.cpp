@@ -1,11 +1,12 @@
-#include "tests.hpp"
-#include <iostream>
-#include <string>
+#include "Board.hpp"
 #include "eval.hpp"
 #include "magic_searcher.hpp"
 #include "search.hpp"
-#include "Board.hpp"
+#include "tests.hpp"
 #include "utils.hpp"
+#include <iostream>
+#include <string>
+
 
 using std::cin, std::cout, std::string;
 using std::chrono::system_clock;
@@ -37,7 +38,8 @@ int main()
                 try
                 {
                     board.loadFen(fen);
-                } catch (std::invalid_argument& e)
+                }
+                catch (std::invalid_argument &e)
                 {
                     std::cout << e.what() << "\n";
                 }
@@ -51,7 +53,7 @@ int main()
             {
                 remainingCommand = splitString(remainingCommand, " moves ")[1];
                 // Move list
-                for (const std::string& move : splitString(remainingCommand, " "))
+                for (const std::string &move : splitString(remainingCommand, " "))
                 {
                     if (move.empty() || move.contains(" "))
                     {
@@ -105,8 +107,8 @@ int main()
         else if (command == "d")
         {
             cout << board.toString() << "\n";
-            cout << "FEN: " <<  board.getFen() << "\n";
-            cout << "Hash: " <<  board.getHash() << "\n";
+            cout << "FEN: " << board.getFen() << "\n";
+            cout << "Hash: " << board.getHash() << "\n";
             cout << "--- Evaluation ---" << "\n";
             printDebugEval(board);
         }

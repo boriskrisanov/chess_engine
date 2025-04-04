@@ -8,7 +8,7 @@ Move::Move(Square start, Square end, MoveFlag flag)
     moveData |= static_cast<uint8_t>(flag);
 }
 
-Move::Move(const Board& board, const std::string& uciString)
+Move::Move(const Board &board, const std::string &uciString)
 {
     if (uciString.length() != 4 && uciString.length() != 5)
     {

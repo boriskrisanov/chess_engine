@@ -1,12 +1,11 @@
 #include "search.hpp"
-
+#include "Board.hpp"
+#include "eval.hpp"
 #include <algorithm>
 #include <iostream>
 #include <thread>
 #include <vector>
 
-#include "Board.hpp"
-#include "eval.hpp"
 
 using std::vector;
 
@@ -43,7 +42,7 @@ struct TT_Entry
     int eval = 0;
     Move bestMoveInPosition;
 
-    TT_Entry(NodeKind kind, uint64_t hash, uint8_t depth, int eval, const Move& bestMoveInPosition)
+    TT_Entry(NodeKind kind, uint64_t hash, uint8_t depth, int eval, const Move &bestMoveInPosition)
         : kind(kind), hash(hash), depth(depth), eval(eval), bestMoveInPosition(bestMoveInPosition)
     {
     }
@@ -66,9 +65,9 @@ size_t index(uint64_t hash)
     return hash % ttNumEntries;
 }
 
-const TT_Entry* getTransposition(uint64_t hash)
+const TT_Entry *getTransposition(uint64_t hash)
 {
-    const TT_Entry* value = &transpositionTable.at(index(hash));
+    const TT_Entry *value = &transpositionTable.at(index(hash));
     if (value->kind == NodeKind::EMPTY || value->hash != hash)
     {
         // Empty node or index collision
@@ -93,7 +92,7 @@ void storeTransposition(NodeKind kind, uint64_t hash, uint8_t depth, uint8_t ply
     transpositionTable.at(index(hash)) = {kind, hash, depth, eval, bestMove_};
 }
 
-int endgameMoveScore(Board& board, const Move& move)
+int endgameMoveScore(Board &board, const Move &move)
 {
     int s = 0;
     board.makeMove(move);
@@ -105,7 +104,7 @@ int endgameMoveScore(Board& board, const Move& move)
     return s;
 }
 
-int moveScore(const Board& board, const Move& move)
+int moveScore(const Board &board, const Move &move)
 {
     int score = 0;
     // This won't be the case for en passant, but it's so rare that it's probably faster to do this without branching and possibly have a suboptimal move order with en passant moves (TODO: Benchmark)
@@ -140,9 +139,9 @@ int moveScore(const Board& board, const Move& move)
     return score;
 }
 
-void orderMoves(Board& board, MoveList& moves)
+void orderMoves(Board &board, MoveList &moves)
 {
-    for (Move& move : moves)
+    for (Move &move : moves)
     {
         const auto ttEntry = getTransposition(board.getHash());
         if (ttEntry != nullptr && !ttEntry->bestMoveInPosition.isInvalid() && ttEntry->bestMoveInPosition == move)
@@ -159,18 +158,16 @@ void orderMoves(Board& board, MoveList& moves)
             move.score = moveScore(board, move);
         }
     }
-    std::ranges::sort(moves, [](const Move& m1, const Move& m2)
-    {
-        return m1.score > m2.score;
-    });
+    std::ranges::sort(moves, [](const Move &m1, const Move &m2)
+                      { return m1.score > m2.score; });
 }
 
-int qSearch(Board& board, int alpha, int beta);
+int qSearch(Board &board, int alpha, int beta);
 
 // Alpha - lower bound, beta - upper bound
 // Anything less than alpha is useless because there's already a better line available
 // Beta is the worst possible score for the opponent, anything higher than beta will not be chosen by the opponent
-int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
+int evaluate(Board &board, uint8_t depth, uint8_t ply, int alpha, int beta)
 {
     if (searchState.interruptSearch)
     {
@@ -178,7 +175,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
         return 0;
     }
 
-    const TT_Entry* ttEntry = getTransposition(board.getHash());
+    const TT_Entry *ttEntry = getTransposition(board.getHash());
     if (ttEntry != nullptr)
     {
         if (ttEntry->depth >= depth)
@@ -274,7 +271,7 @@ int evaluate(Board& board, uint8_t depth, uint8_t ply, int alpha, int beta)
 }
 
 // Continues the search until a "quiet" position is reached (no possible captures)
-int qSearch(Board& board, int alpha, int beta)
+int qSearch(Board &board, int alpha, int beta)
 {
     if (searchState.interruptSearch)
     {
@@ -308,7 +305,7 @@ int qSearch(Board& board, int alpha, int beta)
     return alpha;
 }
 
-SearchResult bestMove(Board& board, uint8_t depth)
+SearchResult bestMove(Board &board, uint8_t depth)
 {
     debugStats = DebugStats{};
     MoveList moves = board.getLegalMoves();
@@ -332,7 +329,7 @@ SearchResult bestMove(Board& board, uint8_t depth)
     return SearchResult{board.sideToMove, bestMove, bestEval, depth, debugStats};
 }
 
-SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit)
+SearchResult timeLimitedSearch(Board &board, std::chrono::milliseconds timeLimit)
 {
     searchState = {};
 
@@ -351,8 +348,7 @@ SearchResult timeLimitedSearch(Board& board, std::chrono::milliseconds timeLimit
                 std::cout << "depth " << searchState.depth << "\n";
                 searchState.bestMove = possibleBestMove;
             }
-        }
-    };
+        }};
 
     std::this_thread::sleep_for(timeLimit);
 

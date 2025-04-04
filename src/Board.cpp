@@ -5,7 +5,6 @@
 #include <regex>
 #include <unordered_map>
 
-
 using std::string;
 
 using enum PieceKind;

@@ -7,7 +7,6 @@
 #include <stack>
 #include <string>
 
-
 const std::string STARTING_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 struct BoardState
