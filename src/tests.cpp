@@ -6,11 +6,10 @@
 #include <iostream>
 #include <map>
 
-
 int passedTests = 0;
 int failedTests = 0;
 
-size_t perft(Board &board, uint8_t depth, bool rootNode = true)
+size_t perft(Board &board, uint8_t depth, bool rootNode = true, bool output = true)
 {
     size_t positionsReached = 0;
 
@@ -31,7 +30,7 @@ size_t perft(Board &board, uint8_t depth, bool rootNode = true)
         const size_t result = perft(board, depth - 1, false);
         positionsReached += result;
 
-        if (rootNode)
+        if (rootNode && output)
         {
             std::cout << static_cast<std::string>(move) << ": " << result << "\n";
         }
@@ -75,7 +74,7 @@ void test(uint8_t depth, const std::string &fen, size_t expectedValue)
 {
     Board board;
     board.loadFen(fen);
-    size_t total = perft(board, depth);
+    size_t total = perft(board, depth, false);
     std::cout << "test " << fen << " ";
     if (total == expectedValue)
     {
@@ -147,8 +146,8 @@ void runTests()
          101255241);
 
     std::cout << "Tests run: " << (passedTests + failedTests)
-              << ". Passed: " << passedTests
-              << ". Failed: " << failedTests
+              << ", Passed: " << passedTests
+              << ", Failed: " << failedTests
               << "\n";
     if (failedTests == 0)
     {
