@@ -16,3 +16,4 @@ int staticEval(const Board &board);
 void printDebugEval(const Board &board);
 int whiteMaterial(const Board &board);
 int blackMaterial(const Board &board);
+int endgameEval(const Board &board);

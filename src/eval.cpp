@@ -1,5 +1,6 @@
 #include "eval.hpp"
 #include "Board.hpp"
+#include "movegen.hpp"
 #include <array>
 #include <cmath>
 #include <iostream>
@@ -46,22 +47,23 @@ const std::array<int, 64> whiteKingOpeningWeights = {
     0, 0, 0, 0, 0, 0, 0, 0,
     5, 5, 2, 0, 0, 2, 5, 5};
 
-const std::array<int, 64> blackKingEndgameWeights = {
-    5, 4, 4, 4, 4, 4, 4, 5,
-    4, 3, 3, 3, 3, 3, 3, 4,
-    4, 3, 0, 0, 0, 0, 3, 4,
-    4, 3, 0, 0, 0, 0, 3, 4,
-    4, 3, 0, 0, 0, 0, 3, 4,
-    4, 3, 0, 0, 0, 0, 3, 4,
-    4, 3, 3, 3, 3, 3, 3, 4,
-    5, 4, 4, 4, 4, 4, 4, 5};
-
 const std::array<int, 64> blackPawnOpeningWeights = switchOpeningWeightSide(whitePawnOpeningWeights);
 const std::array<int, 64> blackKnightOpeningWeights = switchOpeningWeightSide(whiteKnightOpeningWeights);
 const std::array<int, 64> blackKingOpeningWeights = switchOpeningWeightSide(whiteKingOpeningWeights);
+const std::array<int, 64> centerDistances = []()
+{
+    std::array<int, 64> distances{};
 
-// The weights are symmetrical around the center, so this simply inverts the sign
-const std::array<int, 64> whiteKingEndgameWeights = switchOpeningWeightSide(blackKingEndgameWeights);
+    for (int i = 0; i < 64; i++)
+    {
+        const auto edgeDist = movegen::getEdgeDistances()[i];
+        const int x = std::min(edgeDist.WEST, edgeDist.EAST);
+        const int y = std::min(edgeDist.NORTH, edgeDist.SOUTH);
+        distances[i] = 6 - (x + y);
+    }
+
+    return distances;
+}();
 
 uint16_t pieceValue(PieceKind kind)
 {
@@ -139,14 +141,22 @@ int endgameEval(const Board &board)
     const bool blackHasSlidingPieces = (board.bitboards[BLACK_ROOK] | board.bitboards[BLACK_BISHOP] | board.bitboards[BLACK_QUEEN]) != 0;
     const int whiteKingPos = bitboards::getMSB(board.bitboards[WHITE_KING]);
     const int blackKingPos = bitboards::getMSB(board.bitboards[BLACK_KING]);
+    const bool whiteIsWinning = whiteHasSlidingPieces && !blackHasSlidingPieces;
+    const bool blackIsWinning = blackHasSlidingPieces && !whiteHasSlidingPieces;
 
-    eval += whiteKingEndgameWeights[whiteKingPos] * (blackHasSlidingPieces && !whiteHasSlidingPieces);
-    eval += blackKingEndgameWeights[blackKingPos] * (whiteHasSlidingPieces && !blackHasSlidingPieces);
+    if (whiteIsWinning)
+    {
+        eval += centerDistances[blackKingPos];
+    }
+    else if (blackIsWinning)
+    {
+        eval -= centerDistances[whiteKingPos];
+    }
 
     const int distanceBetweenKings = abs(square::file(whiteKingPos) - square::file(blackKingPos)) + abs(square::rank(whiteKingPos) - square::rank(blackKingPos));
 
-    eval -= (16 - distanceBetweenKings) * (blackHasSlidingPieces && !whiteHasSlidingPieces);
-    eval += (16 - distanceBetweenKings) * (!blackHasSlidingPieces && whiteHasSlidingPieces);
+    eval -= (16 - distanceBetweenKings) * blackIsWinning;
+    eval += (16 - distanceBetweenKings) * whiteIsWinning;
 
     return eval;
 }

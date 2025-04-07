@@ -1,5 +1,6 @@
 #include "search.hpp"
 #include "Board.hpp"
+#include "Piece.hpp"
 #include "eval.hpp"
 #include <algorithm>
 #include <iostream>
@@ -95,10 +96,11 @@ int endgameMoveScore(Board &board, const Move &move)
 {
     int s = 0;
     board.makeMove(move);
-    if (board.isCheck())
-    {
-        s += 500;
-    }
+    s = endgameEval(board) * (board.sideToMove == PieceColor::BLACK ? -1 : 1);
+    // if (board.isCheck())
+    // {
+    //     s += 500;
+    // }
     board.unmakeMove();
     return s;
 }

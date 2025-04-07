@@ -8,18 +8,6 @@ using enum PieceColor;
 
 namespace movegen
 {
-struct EdgeDistance
-{
-    uint8_t WEST;
-    uint8_t EAST;
-    uint8_t NORTH;
-    uint8_t SOUTH;
-    uint8_t NORTHWEST;
-    uint8_t NORTHEAST;
-    uint8_t SOUTHWEST;
-    uint8_t SOUTHEAST;
-};
-
 enum class Direction : int8_t
 {
     NORTH = -8,
@@ -53,6 +41,11 @@ constexpr array<EdgeDistance, 64> edgeDistances = []() consteval
 
     return distances;
 }();
+
+array<EdgeDistance, 64> getEdgeDistances()
+{
+    return edgeDistances;
+}
 
 constexpr uint8_t edgeDistanceInDirection(Square square, Direction direction)
 {
