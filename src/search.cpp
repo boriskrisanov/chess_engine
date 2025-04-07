@@ -97,10 +97,6 @@ int endgameMoveScore(Board &board, const Move &move)
     int s = 0;
     board.makeMove(move);
     s = endgameEval(board) * (board.sideToMove == PieceColor::BLACK ? -1 : 1);
-    // if (board.isCheck())
-    // {
-    //     s += 500;
-    // }
     board.unmakeMove();
     return s;
 }
