@@ -6,6 +6,7 @@
 #include "utils.hpp"
 #include <iostream>
 #include <string>
+#include "mcts.hpp"
 
 using std::cin, std::cout, std::string;
 using std::chrono::system_clock;
@@ -125,6 +126,12 @@ int main()
         else if (command == "quit")
         {
             break;
+        }
+        else if (command == "mcts")
+        {
+            int iter;
+            std::cin >> iter;
+            mcts(board, iter);
         }
         else
         {
