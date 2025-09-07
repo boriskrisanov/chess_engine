@@ -98,7 +98,7 @@ inline void mctsIteration(Board board, PieceColor side)
     {
         // Select next move
         double bestScore = 0;
-        Move selectedMove;
+        Move selectedMove = legalMoves[0];
         for (Move move : legalMoves)
         {
             board.makeMove(move);
