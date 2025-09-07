@@ -2,15 +2,23 @@
 
 #include "Board.hpp"
 
+#include <iomanip>
+#include <random>
+#include <thread>
 #include <unordered_map>
+#include <iostream>
+
+static std::random_device randomDevice;
+static std::mt19937 rng(randomDevice());
 
 struct MctsNodeStats
 {
-    size_t whiteWins = 0;
-    size_t blackWins = 0;
-    size_t draws = 0;
+    uint32_t whiteWins = 0;
+    uint32_t blackWins = 0;
+    uint32_t draws = 0;
+    bool isLeaf = true;
 
-    size_t visits() const
+    uint64_t visits() const
     {
         return whiteWins + blackWins + draws;
     }
@@ -23,105 +31,218 @@ enum class GameResult
     DRAW
 };
 
-static std::unordered_map<uint64_t, MctsNodeStats> nodes;
+using node_hashmap_t = std::unordered_map<uint64_t, MctsNodeStats>;
+static node_hashmap_t wNodes;
+static node_hashmap_t bNodes;
 
-inline GameResult mctsIteration(Board &board)
+
+static std::vector<uint64_t> visitedNodes; // Cleared on every iteration, defined here for performance
+
+inline GameResult rollout(Board board)
 {
-    // operator[] will create the node if it doesn't exist
-    // Create node in hashmap if it doesn't already exist
-    const auto hash = board.getHash();
-    const auto currentNodeSide = board.sideToMove;
-    // if (!nodes.contains(hash))
-    // {
-    //     nodes[hash] = MctsNodeStats{};
-    // }
-
-    // Return and update node stats if the game is over
+    while (!board.getLegalMoves().empty() && !board.isDraw())
+    {
+        MoveList moves = board.getLegalMoves();
+        std::uniform_int_distribution uniformIntDistribution{0, static_cast<int>(moves.size() - 1)};
+        // Board is copied so no need to undo moves
+        const int index = uniformIntDistribution(rng);
+        board.makeMove(moves[index]);
+    }
     if (board.isCheckmate(PieceColor::WHITE))
     {
-        nodes[hash].blackWins++;
-        return GameResult::WHITE_WON;
+        return GameResult::BLACK_WON;
     }
     if (board.isCheckmate(PieceColor::BLACK))
     {
-        nodes[hash].whiteWins++;
-
-        return GameResult::BLACK_WON;
+        return GameResult::WHITE_WON;
     }
-    if (board.isDraw())
-    {
-        nodes[hash].draws++;
-        return GameResult::DRAW;
-    }
-
-    // Select next node
-    MoveList moves = board.getLegalMoves();
-    double bestScore = 0;
-    Move selectedMove;
-    for (Move move : moves)
-    {
-        board.makeMove(move);
-        const auto newHash = board.getHash();
-        const MctsNodeStats &newNode = nodes[newHash];
-
-        // Calculate score
-        if (newNode.visits() == 0)
-        {
-            // Win ratio will be infinite so score will be infinite
-            selectedMove = move;
-            board.unmakeMove();
-            break;
-        }
-        const double winRatio = static_cast<double>(board.sideToMove == PieceColor::WHITE ? newNode.whiteWins : newNode.blackWins) / static_cast<double>(newNode.visits());
-        const auto parentVisits = static_cast<double>(nodes[hash].visits());
-        const double explorationConstant = std::sqrt(2);
-        const double explorationValue = std::sqrt(std::log(parentVisits) / static_cast<double>(newNode.visits()));
-        const double score = winRatio + explorationConstant * explorationValue;
-
-        if (score > bestScore)
-        {
-            bestScore = score;
-            selectedMove = move;
-        }
-
-        board.unmakeMove();
-    }
-
-    // No need to undo move because board is copied for each iteration
-    board.makeMove(selectedMove);
-
-    auto result = mctsIteration(board);
-
-    if (result == GameResult::WHITE_WON)
-    {
-        nodes[hash].whiteWins++;
-    }
-    else if (result == GameResult::BLACK_WON)
-    {
-        nodes[hash].blackWins++;
-    }
-    else if (result == GameResult::DRAW)
-    {
-        nodes[hash].draws++;
-    }
-
-    return result;
+    return GameResult::DRAW;
 }
 
-inline void mcts(Board board, size_t iterations)
+inline void updateVisitedNodeStats(GameResult gameResult, node_hashmap_t &nodes)
 {
-    auto hash = board.getHash();
-    nodes.clear();
-    for (int i = 0; i < iterations; i++)
+    for (uint64_t hash : visitedNodes)
     {
-        Board boardCopy = board;
-        mctsIteration(boardCopy);
+        if (gameResult == GameResult::WHITE_WON)
+        {
+            nodes[hash].whiteWins++;
+        }
+        else if (gameResult == GameResult::BLACK_WON)
+        {
+            nodes[hash].blackWins++;
+        }
+        else if (gameResult == GameResult::DRAW)
+        {
+            nodes[hash].draws++;
+        }
+    }
+}
+
+inline void mctsIteration(Board board, PieceColor side)
+{
+    // NOTE: operator[] will create the node if it doesn't exist in the hashmap
+
+    visitedNodes.clear();
+    visitedNodes.push_back(board.getHash());
+
+    node_hashmap_t& nodes = side == PieceColor::WHITE ? wNodes : bNodes;
+
+    MoveList legalMoves = board.getLegalMoves();
+
+    if (!legalMoves.empty() && !board.isDraw())
+    {
+        nodes[board.getHash()].isLeaf = false;
     }
 
-    auto stats = nodes[hash];
-    double w = static_cast<double>(stats.whiteWins) / static_cast<double>(stats.visits());
-    double b = static_cast<double>(stats.blackWins) / static_cast<double>(stats.visits());
-    double d = static_cast<double>(stats.draws) / static_cast<double>(stats.visits());
+    while (!legalMoves.empty() && !board.isDraw())
+    {
+        // Select next move
+        double bestScore = 0;
+        Move selectedMove;
+        for (Move move : legalMoves)
+        {
+            board.makeMove(move);
+            const auto newHash = board.getHash();
+            const MctsNodeStats &newNode = nodes[newHash];
 
-    std::cout << "w = " << w << ", b = " << b << ", d = " << d << "\n";
+            if (newNode.visits() == 0)
+            {
+                const auto result = rollout(board);
+                visitedNodes.push_back(newHash);
+                updateVisitedNodeStats(result, nodes);
+                return;
+            }
+            // Calculate score
+            const double winRatio = static_cast<double>(side == PieceColor::WHITE ? newNode.whiteWins : newNode.blackWins) / static_cast<double>(newNode.visits());
+            const auto parentNodeStats = nodes[visitedNodes[visitedNodes.size() - 1]];
+            const auto parentVisits = static_cast<double>(parentNodeStats.visits());
+            const double explorationConstant = std::sqrt(2);
+            const double explorationValue = std::sqrt(std::log(parentVisits) / static_cast<double>(newNode.visits()));
+            const double score = winRatio + explorationConstant * explorationValue;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                selectedMove = move;
+            }
+
+            board.unmakeMove();
+        }
+
+        board.makeMove(selectedMove);
+        visitedNodes.push_back(board.getHash());
+
+        legalMoves = board.getLegalMoves();
+    }
+
+    for (const uint64_t hash : visitedNodes)
+    {
+        if (board.isCheckmate(PieceColor::WHITE))
+        {
+            updateVisitedNodeStats(GameResult::BLACK_WON, nodes);
+        }
+        else if (board.isCheckmate(PieceColor::BLACK))
+        {
+            updateVisitedNodeStats(GameResult::WHITE_WON, nodes);
+        }
+        else if (board.isDraw())
+        {
+            updateVisitedNodeStats(GameResult::DRAW, nodes);
+        }
+    }
+}
+
+// TODO: Improve threading code (this is temporary, just testing for now)
+
+static bool stopMcts = false;
+
+inline double calculateConfidence(const node_hashmap_t& nodes)
+{
+    // TODO: Improve
+    double meanVisitCount = 0;
+    double visitCountSquareSum = 0;
+
+    std::vector<MctsNodeStats> leafNodes;
+
+    for (const auto[hash, node] : nodes)
+    {
+        if (node.isLeaf)
+        {
+            leafNodes.push_back(node);
+        }
+    }
+
+    for (const MctsNodeStats& node : leafNodes)
+    {
+        meanVisitCount += node.visits();
+    }
+
+    meanVisitCount /= leafNodes.size();
+
+    for (const MctsNodeStats& node : leafNodes)
+    {
+        visitCountSquareSum += std::pow(node.visits() - meanVisitCount, 2);
+    }
+
+    const double stddev = std::sqrt(visitCountSquareSum / leafNodes.size());
+
+    return stddev;
+}
+
+inline void printMctsStats(uint64_t hash)
+{
+    // TODO: Clean up code
+    double totalVisits = wNodes[hash].visits() + bNodes[hash].visits();
+
+    // Stats from white's perspective
+    double w1 = static_cast<double>(wNodes[hash].whiteWins) / totalVisits;
+    double b1 = static_cast<double>(wNodes[hash].blackWins) / totalVisits;
+    double d1 = static_cast<double>(wNodes[hash].draws) / totalVisits;
+
+
+
+    // Stats from black's perspective
+    double w2 = static_cast<double>(bNodes[hash].whiteWins + bNodes[hash].whiteWins) / totalVisits;
+    double b2 = static_cast<double>(bNodes[hash].blackWins + bNodes[hash].blackWins) / totalVisits;
+    double d2 = static_cast<double>(bNodes[hash].draws + bNodes[hash].draws) / totalVisits;
+
+    std::cout << std::setprecision(8) << std::fixed;
+    std::cout << "W: w = " << w1 << ", b = " << b1 << ", d = " << d1 << ", confidence = " << calculateConfidence(wNodes) << "\n";
+    std::cout << "B: w = " << w2 << ", b = " << b2 << ", d = " << d2 << ", confidence = " << calculateConfidence(bNodes) << "\n";
+    std::cout << std::endl;
+}
+
+inline void mcts(Board board)
+{
+    stopMcts = false;
+    auto hash = board.getHash();
+    wNodes.clear();
+    bNodes.clear();
+    auto side = PieceColor::WHITE;
+    while (!stopMcts)
+    {
+        mctsIteration(board, side);
+        side = oppositeColor(side);
+        const uint64_t iterations = wNodes[hash].visits() + bNodes[hash].visits();
+        if (iterations % 1000 == 0) [[unlikely]]
+        {
+            std::cout << iterations << " =====";
+            printMctsStats(hash);
+            std::cout << "=====\n";
+        }
+    }
+
+    printMctsStats(hash);
+
+    visitedNodes.clear();
+    wNodes.clear();
+    bNodes.clear();
+}
+
+inline std::thread mctsThread;
+
+inline void startMcts(Board board)
+{
+    mctsThread = std::thread{mcts, board};
+    mctsThread.detach();
 }

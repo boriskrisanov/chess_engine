@@ -8,6 +8,8 @@
 #include <string>
 #include "mcts.hpp"
 
+#include <thread>
+
 using std::cin, std::cout, std::string;
 using std::chrono::system_clock;
 
@@ -15,6 +17,7 @@ int main()
 {
     Board board;
     board.loadFen(STARTING_POSITION_FEN);
+
     while (true)
     {
         string command;
@@ -129,9 +132,11 @@ int main()
         }
         else if (command == "mcts")
         {
-            int iter;
-            std::cin >> iter;
-            mcts(board, iter);
+            startMcts(board);
+        }
+        else if (command == "stop")
+        {
+            stopMcts = true;
         }
         else
         {

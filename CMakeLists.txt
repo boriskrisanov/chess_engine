@@ -52,6 +52,7 @@ elseif (BUILD_MODE STREQUAL "executable")
             src/magic_searcher.hpp
             src/magic_searcher.cpp
             src/mcts.hpp
+            src/mcts.cpp
     )
 else ()
     message(FATAL_ERROR "BUILD_MODE is invalid, see CMakeLists.txt for valid options")
