@@ -186,30 +186,53 @@ inline double calculateConfidence(const node_hashmap_t& nodes)
 
     const double stddev = std::sqrt(visitCountSquareSum / leafNodes.size());
 
+    // return std::log(stddev);
     return stddev;
 }
 
 inline void printMctsStats(uint64_t hash)
 {
     // TODO: Clean up code
-    double totalVisits = wNodes[hash].visits() + bNodes[hash].visits();
+    double wVisits = wNodes[hash].visits();
+    double bVisits = bNodes[hash].visits();
 
     // Stats from white's perspective
-    double w1 = static_cast<double>(wNodes[hash].whiteWins) / totalVisits;
-    double b1 = static_cast<double>(wNodes[hash].blackWins) / totalVisits;
-    double d1 = static_cast<double>(wNodes[hash].draws) / totalVisits;
-
-
+    const double w1 = wNodes[hash].whiteWins / wVisits;
+    const double b1 = wNodes[hash].blackWins / wVisits;
+    const double d1 = wNodes[hash].draws / wVisits;
 
     // Stats from black's perspective
-    double w2 = static_cast<double>(bNodes[hash].whiteWins + bNodes[hash].whiteWins) / totalVisits;
-    double b2 = static_cast<double>(bNodes[hash].blackWins + bNodes[hash].blackWins) / totalVisits;
-    double d2 = static_cast<double>(bNodes[hash].draws + bNodes[hash].draws) / totalVisits;
+    const double w2 = bNodes[hash].whiteWins / bVisits;
+    const double b2 = bNodes[hash].blackWins / bVisits;
+    const double d2 = bNodes[hash].draws / bVisits;
+
+    const double wConfidence = calculateConfidence(wNodes);
+    const double bConfidence = calculateConfidence(bNodes);
+    const double wWeight = wConfidence / (wConfidence + bConfidence);
+    const double bWeight = bConfidence / (wConfidence + bConfidence);
+
+    // const double wWeight = std::exp(wConfidence) / (std::exp(wConfidence) + std::exp(bConfidence));
+    // const double bWeight = std::exp(bConfidence) / (std::exp(wConfidence) + std::exp(bConfidence));
+
+    // Normalise W/D/L scores
+    const double wScore = w1 * wWeight + w2 * bWeight;
+    const double bScore = b1 * wWeight + b2 * bWeight;
+    const double dScore = d1 * wWeight + d2 * bWeight;
+
+    // const double expSum = std::exp(wScore) + std::exp(bScore) + std::exp(dScore);
+    // const double wProbability = std::exp(wScore) / expSum;
+    // const double bProbability = std::exp(bScore) / expSum;
+    // const double dProbability = std::exp(dScore) / expSum;
+
+    const double expSum = wScore + bScore + dScore;
+    const double wProbability = wScore / expSum;
+    const double bProbability = bScore / expSum;
+    const double dProbability = dScore / expSum;
 
     std::cout << std::setprecision(8) << std::fixed;
-    std::cout << "W: w = " << w1 << ", b = " << b1 << ", d = " << d1 << ", confidence = " << calculateConfidence(wNodes) << "\n";
-    std::cout << "B: w = " << w2 << ", b = " << b2 << ", d = " << d2 << ", confidence = " << calculateConfidence(bNodes) << "\n";
-    std::cout << std::endl;
+    std::cout << "W: w = " << w1 << ", b = " << b1 << ", d = " << d1 << ", confidence = " << wWeight << "\n";
+    std::cout << "B: w = " << w2 << ", b = " << b2 << ", d = " << d2 << ", confidence = " << bWeight << "\n";
+    std::cout << "Final: w = " << wProbability << ", b = " << bProbability << ", d = " << dProbability << "\n";
 }
 
 inline void mcts(Board board)
@@ -226,7 +249,7 @@ inline void mcts(Board board)
         const uint64_t iterations = wNodes[hash].visits() + bNodes[hash].visits();
         if (iterations % 1000 == 0) [[unlikely]]
         {
-            std::cout << iterations << " =====";
+            std::cout << iterations << " =====\n";
             printMctsStats(hash);
             std::cout << "=====\n";
         }
