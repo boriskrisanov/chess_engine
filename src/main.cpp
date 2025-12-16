@@ -136,7 +136,7 @@ int main()
         }
         else if (command == "stop")
         {
-            stopMcts = true;
+            stopMcts();
         }
         else
         {
