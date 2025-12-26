@@ -24,6 +24,6 @@ enum class GameResult
     DRAW
 };
 
-void mctsIteration(Board board, PieceColor side);
+void mctsIteration(Board board);
 void startMcts(Board board);
 void stopMcts();

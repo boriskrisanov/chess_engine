@@ -1,5 +1,6 @@
 #include "mcts.hpp"
 
+#include <complex>
 #include <iomanip>
 #include <thread>
 #include <unordered_map>
@@ -10,8 +11,7 @@ using node_hashmap_t = std::unordered_map<uint64_t, MctsNodeStats>;
 std::random_device randomDevice;
 std::mt19937 rng(randomDevice());
 
-node_hashmap_t wNodes;
-node_hashmap_t bNodes;
+node_hashmap_t nodes;
 
 std::vector<uint64_t> visitedNodes; // Cleared on every iteration, defined here for performance
 
@@ -56,14 +56,13 @@ void updateVisitedNodeStats(GameResult gameResult, node_hashmap_t &nodes)
 }
 
 
-void mctsIteration(Board board, PieceColor side)
+void mctsIteration(Board board)
 {
     // NOTE: operator[] will create the node if it doesn't exist in the hashmap
 
     visitedNodes.clear();
     visitedNodes.push_back(board.getHash());
-
-    node_hashmap_t &nodes = side == PieceColor::WHITE ? wNodes : bNodes;
+    const PieceColor side = board.sideToMove;
 
     MoveList legalMoves = board.getLegalMoves();
 
@@ -134,97 +133,47 @@ void mctsIteration(Board board, PieceColor side)
 
 bool shouldStopMcts = false;
 
-double calculateConfidence(const node_hashmap_t &nodes)
+void printMctsStats(uint64_t hash)
 {
-    // TODO: Improve
-    double meanVisitCount = 0;
-    double visitCountSquareSum = 0;
-
-    std::vector<MctsNodeStats> leafNodes;
-
-    for (const auto [hash, node] : nodes)
+    std::vector<MctsNodeStats> leaves;
+    uint64_t totalIterations = nodes[hash].visits();
+    uint64_t totalWhiteWins = nodes[hash].whiteWins;
+    uint64_t totalBlackWins = nodes[hash].blackWins;
+    uint64_t totalDraws = nodes[hash].draws;
+    double w = 0;
+    double b = 0;
+    double d = 0;
+    for (const auto&[node, stats] : nodes)
     {
-        if (node.isLeaf)
+        if (stats.isLeaf)
         {
-            leafNodes.push_back(node);
+            const double weight = static_cast<double>(stats.visits()) / totalIterations;
+            w += (static_cast<double>(stats.whiteWins) / totalWhiteWins) * weight;
+            b += (static_cast<double>(stats.blackWins) / totalBlackWins) * weight;
+            d += (static_cast<double>(stats.draws) / totalDraws) * weight;
         }
     }
 
-    for (const MctsNodeStats &node : leafNodes)
-    {
-        meanVisitCount += node.visits();
-    }
-
-    meanVisitCount /= leafNodes.size();
-
-    for (const MctsNodeStats &node : leafNodes)
-    {
-        visitCountSquareSum += std::pow(node.visits() - meanVisitCount, 2);
-    }
-
-    const double stddev = std::sqrt(visitCountSquareSum / leafNodes.size());
-
-    // return std::log(stddev);
-    return stddev;
-}
-
-void printMctsStats(uint64_t hash)
-{
-    // TODO: Clean up code
-    double wVisits = wNodes[hash].visits();
-    double bVisits = bNodes[hash].visits();
-
-    // Stats from white's perspective
-    const double w1 = wNodes[hash].whiteWins / wVisits;
-    const double b1 = wNodes[hash].blackWins / wVisits;
-    const double d1 = wNodes[hash].draws / wVisits;
-
-    // Stats from black's perspective
-    const double w2 = bNodes[hash].whiteWins / bVisits;
-    const double b2 = bNodes[hash].blackWins / bVisits;
-    const double d2 = bNodes[hash].draws / bVisits;
-
-    const double wConfidence = calculateConfidence(wNodes);
-    const double bConfidence = calculateConfidence(bNodes);
-    const double wWeight = wConfidence / (wConfidence + bConfidence);
-    const double bWeight = bConfidence / (wConfidence + bConfidence);
-
-    // const double wWeight = std::exp(wConfidence) / (std::exp(wConfidence) + std::exp(bConfidence));
-    // const double bWeight = std::exp(bConfidence) / (std::exp(wConfidence) + std::exp(bConfidence));
-
-    // Normalise W/D/L scores
-    const double wScore = w1 * wWeight + w2 * bWeight;
-    const double bScore = b1 * wWeight + b2 * bWeight;
-    const double dScore = d1 * wWeight + d2 * bWeight;
-
-    // const double expSum = std::exp(wScore) + std::exp(bScore) + std::exp(dScore);
-    // const double wProbability = std::exp(wScore) / expSum;
-    // const double bProbability = std::exp(bScore) / expSum;
-    // const double dProbability = std::exp(dScore) / expSum;
-
-    const double expSum = wScore + bScore + dScore;
-    const double wProbability = wScore / expSum;
-    const double bProbability = bScore / expSum;
-    const double dProbability = dScore / expSum;
+    // Softmax
+    auto expSum = std::exp(w) + std::exp(b) + std::exp(d);
 
     std::cout << std::setprecision(8) << std::fixed;
-    std::cout << "W: w = " << w1 << ", b = " << b1 << ", d = " << d1 << ", confidence = " << wWeight << "\n";
-    std::cout << "B: w = " << w2 << ", b = " << b2 << ", d = " << d2 << ", confidence = " << bWeight << "\n";
-    std::cout << "Final: w = " << wProbability << ", b = " << bProbability << ", d = " << dProbability << "\n";
+    std::cout << "w = " << std::exp(w) / expSum << "\n";
+    std::cout << "b = " << std::exp(b) / expSum << "\n";
+    std::cout << "d = " << std::exp(d) / expSum << std::endl;
 }
 
 void mcts(Board board)
 {
     shouldStopMcts = false;
     auto hash = board.getHash();
-    wNodes.clear();
-    bNodes.clear();
+    nodes.clear();
     auto side = PieceColor::WHITE;
     while (!shouldStopMcts)
     {
-        mctsIteration(board, side);
-        side = oppositeColor(side);
-        const uint64_t iterations = wNodes[hash].visits() + bNodes[hash].visits();
+        mctsIteration(board);
+        // side = oppositeColor(side);
+        const uint64_t iterations = nodes[hash].visits();
         if (iterations % 1000 == 0) [[unlikely]]
         {
             std::cout << iterations << " =====\n";
@@ -236,8 +185,7 @@ void mcts(Board board)
     printMctsStats(hash);
 
     visitedNodes.clear();
-    wNodes.clear();
-    bNodes.clear();
+    nodes.clear();
 }
 
 std::thread mctsThread;
