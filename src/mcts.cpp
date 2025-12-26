@@ -155,7 +155,7 @@ void mcts(Board board)
     while (!shouldStopMcts)
     {
         mctsIteration(board, side);
-        side = oppositeColor(side);
+        // side = oppositeColor(side);
         const uint64_t iterations = nodes[hash].visits();
         if (iterations % 1000 == 0) [[unlikely]]
         {
