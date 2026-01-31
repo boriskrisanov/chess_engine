@@ -72,19 +72,20 @@ GameResult mctsIteration(Board& board, PieceColor side)
 {
     const uint64_t currentHash = board.getHash();
 
+    MoveList moves = board.getLegalMoves();
     // rollout() will handle the case when the game has ended by simply returning the game result with no iterations
-    if (!nodes.contains(currentHash) || board.getLegalMoves().empty() || board.isDraw())
+    if (!nodes.contains(currentHash) || moves.empty() || board.isDraw())
     {
         auto result = rollout(board);
         nodes[currentHash].update(result);
         return result;
     }
 
-    // Select node
+    // Select node (at this point we know that there is at least one legal move)
 
-    Move selectedMove;
+    Move selectedMove = moves[0];
     double bestScore = 0;
-    for (Move move : board.getLegalMoves())
+    for (const Move move : moves)
     {
         board.makeMove(move);
         uint64_t newHash = board.getHash();
@@ -144,7 +145,8 @@ void printMctsStats(Board board)
     std::cout << "Selected move: " << static_cast<std::string>(selectedMove) << "\n";
     std::cout << "w = " << static_cast<double>(wins) / visits << "\n";
     std::cout << "d = " <<  static_cast<double>(draws) / visits << "\n";
-    std::cout << "l = " <<  static_cast<double>(losses) / visits << std::endl;
+    std::cout << "l = " <<  static_cast<double>(losses) / visits << "\n";
+    std::cout << "Stored positions: " << nodes.size() << std::endl;
 }
 
 void mcts(Board board)
