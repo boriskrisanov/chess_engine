@@ -142,7 +142,7 @@ class Board
     bool isDrawByFiftyMoveRule() const;
 
   private:
-    std::array<Piece, 64> board{};
+    std::array<Piece, 64> board{}; // TODO: Can be removed?
 
     Bitboard whiteAttackingSquares = 0;
     Bitboard blackAttackingSquares = 0;

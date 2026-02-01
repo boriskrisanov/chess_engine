@@ -14,7 +14,26 @@ using node_hashmap_t = std::unordered_map<uint64_t, MctsNodeStats>;
 std::random_device randomDevice;
 std::mt19937 rng(randomDevice());
 
-node_hashmap_t nodes;
+node_hashmap_t whiteNodes;
+node_hashmap_t blackNodes;
+
+node_hashmap_t& getNodes(PieceColor color)
+{
+    return whiteNodes;
+    return color == PieceColor::WHITE ? whiteNodes : blackNodes;
+}
+
+int randint(int min, int max)
+{
+    std::uniform_int_distribution uniformIntDistribution{min, max};
+    return uniformIntDistribution(rng);
+}
+
+Move randomMove(const MoveList& moves)
+{
+    return moves[randint(0, moves.size() - 1)];
+}
+
 bool shouldStopMcts = false;
 
 void MctsNodeStats::update(GameResult gameResult)
@@ -35,14 +54,13 @@ void MctsNodeStats::update(GameResult gameResult)
 
 GameResult rollout(Board board)
 {
-    while (!board.getLegalMoves().empty() && !board.isDraw())
+    MoveList moves = board.getLegalMoves();
+    while (!moves.empty() && !board.isDraw())
     {
-        MoveList moves = board.getLegalMoves();
-        std::uniform_int_distribution uniformIntDistribution{0, static_cast<int>(moves.size() - 1)};
-        // Board is copied so no need to undo moves
-        const int index = uniformIntDistribution(rng);
-        board.makeMove(moves[index]);
+        board.makeMove(randomMove(moves));
+        moves = board.getLegalMoves();
     }
+
     if (board.isCheckmate(PieceColor::WHITE))
     {
         return GameResult::BLACK_WON;
@@ -54,8 +72,9 @@ GameResult rollout(Board board)
     return GameResult::DRAW;
 }
 
-double calculateNodeScore(uint64_t node, uint64_t parent, PieceColor side)
+double calculateNodeScore(uint64_t node, uint64_t parent, const PieceColor side)
 {
+    auto& nodes = getNodes(side);
     const auto parentNodeStats = nodes[parent];
     const auto currentNodeStats = nodes[node];
     const double winRatio = static_cast<double>(side == PieceColor::WHITE
@@ -68,9 +87,10 @@ double calculateNodeScore(uint64_t node, uint64_t parent, PieceColor side)
     return winRatio + explorationConstant * explorationValue;
 }
 
-GameResult mctsIteration(Board& board, PieceColor side)
+GameResult mctsIteration(Board& board, const PieceColor side)
 {
     const uint64_t currentHash = board.getHash();
+    auto& nodes = getNodes(side);
 
     MoveList moves = board.getLegalMoves();
     // rollout() will handle the case when the game has ended by simply returning the game result with no iterations
@@ -82,30 +102,29 @@ GameResult mctsIteration(Board& board, PieceColor side)
     }
 
     // Select node (at this point we know that there is at least one legal move)
-
-    Move selectedMove = moves[0];
     double bestScore = 0;
-    for (const Move move : moves)
-    {
-        board.makeMove(move);
-        uint64_t newHash = board.getHash();
-
-        if (!nodes.contains(newHash))
+    Move selectedMove = moves[0];
+        for (const Move move : moves)
         {
-            selectedMove = move;
+            board.makeMove(move);
+            uint64_t newHash = board.getHash();
+
+            if (!nodes.contains(newHash))
+            {
+                selectedMove = move;
+                board.unmakeMove();
+                break;
+            }
+
+            const double score = calculateNodeScore(newHash, currentHash, side);
+            if (score > bestScore)
+            {
+                selectedMove = move;
+                bestScore = score;
+            }
+
             board.unmakeMove();
-            break;
         }
-
-        const double score = calculateNodeScore(newHash, currentHash, side);
-        if (score > bestScore)
-        {
-            selectedMove = move;
-            bestScore = score;
-        }
-
-        board.unmakeMove();
-    }
 
     // Backpropagate
 
@@ -118,6 +137,10 @@ GameResult mctsIteration(Board& board, PieceColor side)
 
 void printMctsStats(Board board)
 {
+    auto& nodes = getNodes(board.sideToMove);
+    const auto rootHash = board.getHash();
+    const Board initialBoard = board;
+
     // Find most visited node
     uint64_t mostVisitedNode;
     uint64_t maxVisits = 0;
@@ -133,19 +156,27 @@ void printMctsStats(Board board)
             selectedMove = move;
         }
 
+        std::cout << board.getHash() << " score " << move.getPgn(initialBoard) << ": " << calculateNodeScore(
+            board.getHash(), rootHash, board.sideToMove) << "\n";
+
+
         board.unmakeMove();
     }
 
     const auto visits = nodes[mostVisitedNode].visits();
-    const auto wins = board.sideToMove == PieceColor::WHITE ? nodes[mostVisitedNode].whiteWins : nodes[mostVisitedNode].blackWins;
-    const auto losses = board.sideToMove == PieceColor::WHITE ? nodes[mostVisitedNode].blackWins : nodes[mostVisitedNode].whiteWins;
+    const auto wins = board.sideToMove == PieceColor::WHITE
+                          ? nodes[mostVisitedNode].whiteWins
+                          : nodes[mostVisitedNode].blackWins;
+    const auto losses = board.sideToMove == PieceColor::WHITE
+                            ? nodes[mostVisitedNode].blackWins
+                            : nodes[mostVisitedNode].whiteWins;
     const auto draws = visits - wins - losses;
 
     std::cout << std::setprecision(8) << std::fixed;
     std::cout << "Selected move: " << static_cast<std::string>(selectedMove) << "\n";
     std::cout << "w = " << static_cast<double>(wins) / visits << "\n";
-    std::cout << "d = " <<  static_cast<double>(draws) / visits << "\n";
-    std::cout << "l = " <<  static_cast<double>(losses) / visits << "\n";
+    std::cout << "d = " << static_cast<double>(draws) / visits << "\n";
+    std::cout << "l = " << static_cast<double>(losses) / visits << "\n";
     std::cout << "Stored positions: " << nodes.size() << std::endl;
 }
 
@@ -154,6 +185,7 @@ void mcts(Board board)
     shouldStopMcts = false;
     auto hash = board.getHash();
     auto side = board.sideToMove;
+    auto& nodes = getNodes(side);
     while (!shouldStopMcts)
     {
         mctsIteration(board, side);
@@ -165,6 +197,7 @@ void mcts(Board board)
             printMctsStats(board);
             std::cout << "=====\n";
         }
+        // nodes = &nodes == &whiteNodes ? blackNodes : whiteNodes;
     }
 
     printMctsStats(board);
