@@ -40,7 +40,12 @@ struct MoveList
         return count;
     }
 
-  private:
+    Move last() const
+    {
+        return moves[count - 1];
+    }
+
+private:
     std::array<Move, 218> moves;
     uint8_t count = 0;
 };

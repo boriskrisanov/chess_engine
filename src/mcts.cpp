@@ -19,7 +19,6 @@ node_hashmap_t blackNodes;
 
 node_hashmap_t& getNodes(PieceColor color)
 {
-    return whiteNodes;
     return color == PieceColor::WHITE ? whiteNodes : blackNodes;
 }
 
@@ -32,6 +31,56 @@ int randint(int min, int max)
 Move randomMove(const MoveList& moves)
 {
     return moves[randint(0, moves.size() - 1)];
+}
+
+struct MoveProbability
+{
+    Move move;
+    double probability;
+
+    friend bool operator<(const MoveProbability& lhs, const MoveProbability& rhs)
+    {
+        return lhs.probability < rhs.probability;
+    }
+
+    friend bool operator<=(const MoveProbability& lhs, const MoveProbability& rhs)
+    {
+        return !(rhs < lhs);
+    }
+
+    friend bool operator>(const MoveProbability& lhs, const MoveProbability& rhs)
+    {
+        return rhs < lhs;
+    }
+
+    friend bool operator>=(const MoveProbability& lhs, const MoveProbability& rhs)
+    {
+        return !(lhs < rhs);
+    }
+
+    friend bool operator==(const MoveProbability& lhs, const MoveProbability& rhs)
+    {
+        return lhs.probability == rhs.probability;
+    }
+};
+
+// TODO: Make MoveList generic
+// Index for move and its probability should be the same (TODO: Bad design but this is just a proof of concept)
+Move randomMoveFromDistribution(std::vector<MoveProbability> probabilities)
+{
+    // Shuffle first to make selection between identical probabilities random
+    std::ranges::shuffle(probabilities, rng);
+    std::ranges::sort(probabilities);
+    std::uniform_real_distribution<> distribution{0, 1};
+    double sample = distribution(rng);
+    for (int i = 0; i < probabilities.size(); i++)
+    {
+        if (sample < probabilities[i].probability)
+        {
+            return probabilities[i].move;
+        }
+    }
+    return probabilities[probabilities.size() - 1].move;
 }
 
 bool shouldStopMcts = false;
@@ -97,13 +146,16 @@ GameResult mctsIteration(Board& board, const PieceColor side)
     if (!nodes.contains(currentHash) || moves.empty() || board.isDraw())
     {
         auto result = rollout(board);
-        nodes[currentHash].update(result);
+        nodes[currentHash].update(result); // TODO: Problem might be here?
         return result;
     }
 
     // Select node (at this point we know that there is at least one legal move)
     double bestScore = 0;
     Move selectedMove = moves[0];
+    if (board.sideToMove == side)
+    {
+        // Select with UCT
         for (const Move move : moves)
         {
             board.makeMove(move);
@@ -125,7 +177,23 @@ GameResult mctsIteration(Board& board, const PieceColor side)
 
             board.unmakeMove();
         }
-
+    }
+    else
+    {
+        // Select with weighted random
+        // Compute probabilities
+        auto adversaryNodes = getNodes(oppositeColor(side));
+        std::vector<MoveProbability> moveProbabilities;
+        const double totalVisitCount = adversaryNodes[board.getHash()].visits();
+        for (Move move : board.getLegalMoves())
+        {
+            board.makeMove(move);
+            const double visitCount = adversaryNodes[board.getHash()].visits();
+            moveProbabilities.push_back({move, visitCount / totalVisitCount});
+            board.unmakeMove();
+        }
+        selectedMove = randomMoveFromDistribution(moveProbabilities);
+    }
     // Backpropagate
 
     board.makeMove(selectedMove);
@@ -185,23 +253,23 @@ void mcts(Board board)
     shouldStopMcts = false;
     auto hash = board.getHash();
     auto side = board.sideToMove;
-    auto& nodes = getNodes(side);
     while (!shouldStopMcts)
     {
         mctsIteration(board, side);
         // side = oppositeColor(side);
-        const uint64_t iterations = nodes[hash].visits();
+        const uint64_t iterations = whiteNodes[hash].visits() + blackNodes[hash].visits();
         if (iterations % 1000 == 0) [[unlikely]]
         {
             std::cout << iterations << " =====\n";
             printMctsStats(board);
             std::cout << "=====\n";
         }
-        // nodes = &nodes == &whiteNodes ? blackNodes : whiteNodes;
+        side = oppositeColor(side);
     }
 
     printMctsStats(board);
-    nodes.clear();
+    whiteNodes.clear();
+    blackNodes.clear();
 }
 
 std::thread mctsThread;
